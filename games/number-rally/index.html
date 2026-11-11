@@ -683,6 +683,8 @@ function activateGate(animate=true){
   G.gateVals = shuffle([p.answer, ...wrong]);
   G.correctLane = G.gateVals.indexOf(p.answer);
   renderProblem(p, animate);
+  G.eqText = p.nums.map((v, i) => i === p.blank ? '?' : v).reduce((acc, v, i) => i === 0 ? '' + v : i === 1 ? `${acc} ${p.op} ${v}` : `${acc} = ${v}`, '');
+  if (animate) showGateEq();
 }
 const gateAbs = r => r.gateLap * trackLen + GATES[r.gk] * SEG;
 function advanceGate(r){ r.gk++; if (r.gk >= GATES.length){ r.gk = 0; r.gateLap++; } r.decided = false; }
@@ -962,6 +964,7 @@ function update(dt){
   if (G.finishedAt && G.t - G.finishedAt > 2.2) showResults();
 
   if (G.flash){ G.flash.t -= dt; if (G.flash.t <= 0) G.flash = null; }
+  if (G.eqFlash){ G.eqFlash.t -= dt; if (G.eqFlash.t <= 0) G.eqFlash = null; }
   G.shake = Math.max(0, G.shake - dt);
   G.hudT -= dt; if (G.hudT <= 0){ updateHud(); G.hudT = .1; }
 }
@@ -1650,7 +1653,17 @@ function render(dt){
     if (f.sub) banner(f.sub, '#ffffff', H * .3 + clamp(W * .1, 30, 54) * .85, clamp(W * .018, 17, 26));
     ctx.globalAlpha = 1;
   }
+  // each gate's equation appears large and see-through in the middle, then dissolves
+  if (G.eqFlash){
+    const e = G.eqFlash, k = 1 - e.t / e.max;
+    const a = (k < .12 ? k / .12 : 1 - (k - .12) / .88) * .6;
+    const size = clamp(Math.min(W * .14, H * .2), 34, 140) * (1 + k * .2);
+    ctx.globalAlpha = clamp(a, 0, 1);
+    drawText(e.text, W / 2, H * .52, size, '#ffffff', 'rgba(20,23,38,.85)', W * .94);
+    ctx.globalAlpha = 1;
+  }
 }
+function showGateEq(){ if (G && G.eqText) G.eqFlash = {text: G.eqText, t: 2.2, max: 2.2}; }
 function banner(text, color, y, size, display){
   ctx.font = display ? `${size}px "Racing Sans One", Impact, sans-serif` : `bold ${size}px "Atkinson Hyperlegible", system-ui, sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -1756,7 +1769,7 @@ function frame(now){
     G.count -= dt;
     const n = Math.ceil(G.count - .6);
     if (n !== G.lastBeep){ G.lastBeep = n; if (n >= 0) sfx.beep(n === 0); }
-    if (G.count <= .6){ state = 'race'; }
+    if (G.count <= .6){ state = 'race'; showGateEq(); }
   } else if (state === 'race') update(dt);
   render(dt);
   engineTick();
