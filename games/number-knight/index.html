@@ -1377,15 +1377,38 @@ function drawPlayer(now, o){
     ctx.fillRect(sx, sy - 7, 1.8, 8); ctx.fillStyle = '#8a5a2a'; ctx.fillRect(sx - 1.2, sy, 4.2, 1.6);
   };
   if (p.dir === 'N') drawBladeIdle();
-  // body
-  ctx.fillStyle = '#2f6fd6'; ctx.fillRect(x - 4.5, y - 2 + bob, 9, 7);
-  ctx.fillStyle = '#244f9e'; ctx.fillRect(x - 4.5, y + 3 + bob, 9, 2);
-  ctx.fillStyle = '#3a2a1f'; ctx.fillRect(x - 3.5, y + 5, 2.5, 2); ctx.fillRect(x + 1, y + 5, 2.5, 2);
-  // head + helmet
-  ctx.fillStyle = '#f2c79b'; ctx.beginPath(); ctx.arc(x, y - 5 + bob, 4, 0, 6.3); ctx.fill();
-  ctx.fillStyle = '#c9d1e0'; ctx.beginPath(); ctx.arc(x, y - 6 + bob, 4.3, Math.PI, 0); ctx.fill();
-  ctx.fillStyle = '#ff5d5d'; ctx.fillRect(x - .8, y - 12 + bob, 1.6, 3);
-  if (p.dir !== 'N'){ ctx.fillStyle = '#1b1d2a'; const ex = dx * 1.5; ctx.fillRect(x - 2 + ex, y - 5 + bob, 1.2, 1.4); ctx.fillRect(x + 1 + ex, y - 5 + bob, 1.2, 1.4); }
+  // the knight: a girl with long lavender hair in a dark purple tunic and skirt
+  const HAIR = '#cdb1f5', HAIR_D = '#a385dc', SUIT = '#3d1f6e', SUIT_D = '#29134d', TRIM = '#8a63d2';
+  const hy = y - 5 + bob, ex = dx * 1.4, sway = Math.sin(p.step * .5) * .6;
+  // long hair behind the shoulders
+  if (p.dir !== 'N'){ ctx.fillStyle = HAIR_D; ctx.beginPath(); ctx.ellipse(x - ex * .6, hy + 3.5, 4.8, 5.6, 0, 0, 6.3); ctx.fill(); }
+  // boots
+  ctx.fillStyle = SUIT_D; ctx.fillRect(x - 3.2, y + 4.5, 2.4, 2.6); ctx.fillRect(x + .8, y + 4.5, 2.4, 2.6);
+  // tunic with a flared skirt, gold belt and light purple hem
+  ctx.fillStyle = SUIT; ctx.fillRect(x - 3.5, y - 2 + bob, 7, 4);
+  ctx.beginPath(); ctx.moveTo(x - 3.5, y + 1.5 + bob); ctx.lineTo(x + 3.5, y + 1.5 + bob); ctx.lineTo(x + 5.6, y + 5.4 + bob); ctx.lineTo(x - 5.6, y + 5.4 + bob); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = TRIM; ctx.fillRect(x - 5.6, y + 4.5 + bob, 11.2, 1); ctx.fillRect(x - .5, y - 2 + bob, 1, 3);
+  ctx.fillStyle = '#ffcb47'; ctx.fillRect(x - 3.5, y + 1 + bob, 7, 1);
+  // head
+  ctx.fillStyle = '#f2c79b'; ctx.beginPath(); ctx.arc(x, hy, 3.8, 0, 6.3); ctx.fill();
+  ctx.fillStyle = HAIR;
+  if (p.dir === 'N'){
+    // seen from behind: all hair, falling down her back
+    ctx.beginPath(); ctx.arc(x, hy - .4, 4.3, 0, 6.3); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x - 4.3, hy); ctx.lineTo(x + 4.3, hy); ctx.lineTo(x + 3.6 + sway, hy + 6.8); ctx.quadraticCurveTo(x + sway, hy + 8.4, x - 3.6 + sway, hy + 6.8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = HAIR_D; ctx.fillRect(x - .4, hy - 3, .8, 9);
+  } else {
+    // crown of hair, bangs and side locks framing the face
+    ctx.beginPath(); ctx.arc(x, hy - .8, 4.4, Math.PI, 0); ctx.fill();
+    ctx.fillRect(x - 4.4 + ex * .3, hy - 1.6, 8.8, 1.6);
+    ctx.fillRect(x - 4.6, hy - 1, 1.7, 6.5 + (dx > 0 ? 1.5 : 0)); ctx.fillRect(x + 2.9, hy - 1, 1.7, 6.5 + (dx < 0 ? 1.5 : 0));
+    // eyes and rosy cheeks
+    ctx.fillStyle = '#1b1d2a'; ctx.fillRect(x - 2 + ex, hy, 1.2, 1.5); ctx.fillRect(x + .9 + ex, hy, 1.2, 1.5);
+    ctx.fillStyle = '#ff9eb5'; ctx.fillRect(x - 2.6 + ex, hy + 1.8, 1.1, .7); ctx.fillRect(x + 1.6 + ex, hy + 1.8, 1.1, .7);
+  }
+  // silver circlet with a purple gem
+  ctx.fillStyle = '#dfe6f5'; ctx.fillRect(x - 3.8, hy - 3.4, 7.6, .9);
+  if (p.dir !== 'N'){ ctx.fillStyle = '#b07cff'; ctx.fillRect(x - .7 + ex * .3, hy - 3.7, 1.4, 1.4); }
   if (p.dir !== 'N') drawBladeIdle();
   // shield
   if (p.shielding){ ctx.fillStyle = '#6fb6ff'; ctx.strokeStyle = '#dff0ff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x + dx * 7, y + dy * 6, 6, 0, 6.3); ctx.fill(); ctx.stroke(); }
