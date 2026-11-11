@@ -170,6 +170,26 @@ input:focus-visible + .chip{outline:3px solid var(--green);outline-offset:2px}
 .goalflash .gfo{font-size:clamp(20px, 5.4vw, 30px);font-weight:700;line-height:1.25;text-wrap:balance}
 @keyframes goalfade{0%{opacity:0;transform:translate(-50%,-50%) scale(.9)}10%{opacity:1;transform:translate(-50%,-50%) scale(1)}72%{opacity:1}100%{opacity:0}}
 @media (prefers-reduced-motion: reduce){ .goalflash{animation:goalfade-rm 2.6s linear forwards} @keyframes goalfade-rm{0%,80%{opacity:1}100%{opacity:0}} }
+/* hearts and stars sit alone in the top-left corner; stage info in the top-right */
+.topbar{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"vit info" "tgt tgt";gap:6px 10px;align-items:start}
+.vitals{grid-area:vit;display:flex;align-items:center;gap:14px;padding:2px 4px;text-shadow:0 2px 0 #000, 0 0 6px rgba(0,0,0,.8)}
+.vitals .hearts{font-size:28px}
+.vitals .count{font-size:24px}
+.info{grid-area:info;justify-self:end;display:flex;align-items:center;gap:8px;background:rgba(16,19,28,.75);border:1.5px solid var(--line);border-radius:10px;padding:4px 8px}
+.topbar > .target{grid-area:tgt;margin:0}
+.info .stage-name{white-space:nowrap}
+.mini{white-space:nowrap}
+@media (max-width:520px){ .info{gap:6px;padding:4px 6px} .info .stage-name{font-size:11.5px} .mini{font-size:11px;padding:4px 6px} #minimap{width:44px;height:32px} }
+@media (min-width:760px){ .topbar{grid-template-columns:1fr minmax(0,560px) 1fr;grid-template-areas:"vit tgt info"} }
+.skiphint{align-self:center;position:relative;overflow:hidden;display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:var(--ink);
+  background:rgba(16,19,28,.75);border:1.5px solid var(--line);border-radius:999px;padding:5px 14px;cursor:pointer;animation:slowflash 2.4s ease-in-out infinite}
+.skiphint::before{content:"";position:absolute;inset:0 auto 0 0;width:calc(var(--p, 0) * 100%);background:rgba(255,203,71,.35)}
+.skiphint > *{position:relative}
+.spacekey{display:inline-flex;align-items:center;justify-content:center;min-width:76px;height:24px;border:2px solid var(--ink);border-bottom-width:4px;border-radius:7px;font-family:var(--body);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:lowercase}
+.skiphint .hold{font-size:12px;color:var(--muted);font-weight:700}
+@media (hover:none),(pointer:coarse){ .skiphint .spacekey,.skiphint .hold{display:none} .skiphint span:first-child::after{content:" ›"} }
+@keyframes slowflash{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion: reduce){ .skiphint{animation:none} }
 .mini{font-family:var(--body);font-weight:700;font-size:12px;background:var(--panel2);border:1.5px solid var(--line);border-radius:8px;padding:5px 8px;cursor:pointer;color:var(--ink)}
 .tip{position:fixed;z-index:40;left:0;top:0;max-width:min(290px, calc(100vw - 16px));background:var(--gold);color:#1a1405;border-radius:10px;padding:8px 12px;font-weight:700;font-size:14px;line-height:1.35;box-shadow:0 6px 20px rgba(0,0,0,.45);pointer-events:none;animation:tipbob 1.2s ease-in-out infinite}
 .tip::after{content:"";position:absolute;left:calc(var(--ax, 50%) - 8px);border:8px solid transparent}
@@ -245,13 +265,14 @@ input:focus-visible + .chip{outline:3px solid var(--green);outline-offset:2px}
 
   <div class="side">
    <div class="topbar" id="topbar">
-    <div class="hud">
+    <div class="vitals">
       <div class="hearts" id="hearts" aria-label="Health"></div>
       <div class="count star" title="Stars"><span class="ic">★</span><span id="stars">0</span></div>
       <div class="count arrow" id="arrowCount" title="Arrows" hidden><span class="ic">➶</span><span id="arrows">0</span></div>
+    </div>
+    <div class="info">
       <div class="stage-name"><span id="stageName">Stage 1</span><br><span id="roomName"></span></div>
       <button class="mini" id="musicBtn" aria-pressed="true">♪ Music on</button>
-      <button class="mini" id="skipTut" hidden>Skip tutorial</button>
       <canvas id="minimap" aria-label="Map"></canvas>
     </div>
 
@@ -264,6 +285,7 @@ input:focus-visible + .chip{outline:3px solid var(--green);outline-offset:2px}
     </div>
    </div>
    <div class="botbar" id="botbar">
+    <button class="skiphint" id="skipTut" hidden><span>Skip tutorial</span><kbd class="spacekey">Space</kbd><span class="hold">hold</span></button>
 
     <div class="blade">
       <button class="bbtn" id="minusBtn" aria-label="Blade number down">−</button>
@@ -816,8 +838,14 @@ const keys = {};
 const joy = {x: 0, y: 0};
 let typed = '', typedT = 0;
 
+let skipHoldT = 0;
 function update(dt){
   game.stats.time += dt;
+  if (game.stage < 0 && keys.Space){
+    skipHoldT += dt;
+    $('skipTut').style.setProperty('--p', Math.min(1, skipHoldT));
+    if (skipHoldT >= 1){ skipHoldT = 0; $('skipTut').style.setProperty('--p', 0); endTutorial(); return; }
+  } else if (skipHoldT){ skipHoldT = 0; $('skipTut').style.setProperty('--p', 0); }
   const ts = (player.slowT > 0 ? .35 : 1) * (keypadOpen ? .3 : 1);
   const edt = dt * ts;           // enemy time
   const pdt = keypadOpen ? dt * .3 : dt;
@@ -1690,7 +1718,7 @@ function setTip(html, target){
 }
 
 /* ---------- cutscenes ---------- */
-const CUT_LEN = {pickup: 5.2, flight: 4.6, landing: 4.4};
+const CUT_LEN = {pickup: 5.2, flight: 4.6, landing: 6.0};
 function startCut(kind){
   setTip(null); tutPoint = null; $('goalFlash').hidden = true;
   for (const k in keys) keys[k] = false; joy.x = joy.y = 0;
@@ -1724,9 +1752,11 @@ function updateCut(dt){
   } else if (c.kind === 'flight'){
     once('a', .7, () => sfx.roar());
   } else {
-    once('a', 2.0, () => { shake(.35); sfx.thud(); burst(WW/2 - 12, 96, '#e8dcc0', 14); burst(WW/2 + 12, 96, '#e8dcc0', 14); });
-    once('b', 2.4, () => sfx.swing());
-    once('c', 3.0, () => sfx.roar());
+    once('w1', .05, () => sfx.whoosh());
+    once('w2', 1.15, () => sfx.whoosh());
+    once('a', 3.6, () => { shake(.35); sfx.thud(); burst(WW/2 - 12, 96, '#e8dcc0', 14); burst(WW/2 + 12, 96, '#e8dcc0', 14); });
+    once('b', 4.0, () => sfx.swing());
+    once('c', 4.6, () => sfx.roar());
   }
   for (let i = parts.length - 1; i >= 0; i--){ const p = parts[i]; p.life -= dt; if (p.life <= 0){ parts.splice(i, 1); continue; } p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .92; p.vy *= .92; }
   shakeT = Math.max(0, shakeT - dt);
@@ -1797,19 +1827,22 @@ function renderCut(){
       caption = t < 2.6 ? 'A friendly dragon swoops down!' : 'Hold on tight!';
       if (t > 4.2) fadeA = (t - 4.2) / 1;
     } else {
-      let dx = WW/2, dy;
-      if (t < 2) dy = -60 + 140 * E(t / 2);
-      else if (t < 2.9) dy = 80;
-      else { dy = 80 - 160 * E((t - 2.9) / 1.5); dx = WW/2 + (t - 2.9) * 40; }
-      const h = clamp((80 - dy) / 140, 0, 1);
-      ctx.fillStyle = `rgba(0,0,0,${.32 - h * .2})`; ctx.beginPath(); ctx.ellipse(dx, 96, 30 * (1 - h * .5), 8 * (1 - h * .5), 0, 0, 6.3); ctx.fill();
-      const hop = clamp((t - 2.4) / .5, 0, 1);
-      if (t >= 2.4){ player.x = WW/2; player.y = 75 + (118 - 75) * hop - Math.sin(hop * Math.PI) * 18; player.dir = 'S'; }
-      if (t >= 2.4 && hop >= 1) drawPlayer(now);
-      drawSkyDragon(dx, dy, now, {rider: t < 2.4});
-      if (t >= 2.4 && hop < 1) drawPlayer(now, {noShadow: true});
-      caption = t < 2.4 ? 'Coming in for a landing...' : `Stage ${game.stage + 1}: ${curStage().name}`;
-      if (t < .4) fadeA = 1 - t / .4;
+      // two fast passes across the room, then the landing
+      let dx = WW/2, dy = 80, shadowY = 96, high = 0;
+      const DESC = 2.0, LAND = 3.6, HOP = 4.0, AWAY = 4.5;
+      if (t < .9){ const k = t / .9; dx = -60 + (WW + 120) * k; dy = 46 - Math.sin(k * Math.PI) * 8; shadowY = 120; high = .8; }
+      else if (t < 1.1) dx = -999;
+      else if (t < DESC){ const k = (t - 1.1) / .9; dx = WW + 60 - (WW + 120) * k; dy = 92; shadowY = 140; high = .6; }
+      else if (t < LAND){ dy = -60 + 140 * E((t - DESC) / (LAND - DESC)); high = clamp((80 - dy) / 140, 0, 1); }
+      else if (t < AWAY) dy = 80;
+      else { dy = 80 - 160 * E((t - AWAY) / 1.5); dx = WW/2 + (t - AWAY) * 40; high = clamp((80 - dy) / 140, 0, 1); }
+      if (dx > -200){ ctx.fillStyle = `rgba(0,0,0,${.32 - high * .2})`; ctx.beginPath(); ctx.ellipse(dx, shadowY, 30 * (1 - high * .5), 8 * (1 - high * .5), 0, 0, 6.3); ctx.fill(); }
+      const hop = clamp((t - HOP) / .5, 0, 1);
+      if (t >= HOP){ player.x = WW/2; player.y = 75 + 43 * hop - Math.sin(hop * Math.PI) * 18; player.dir = 'S'; }
+      if (t >= HOP && hop >= 1) drawPlayer(now);
+      if (dx > -200) drawSkyDragon(dx, dy, now, {rider: t < HOP});
+      if (t >= HOP && hop < 1) drawPlayer(now, {noShadow: true});
+      if (t < .3) fadeA = 1 - t / .3;
     }
   }
   for (const p of parts){ ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.c; ctx.fillRect(p.x - p.s/2, p.y - p.s/2, p.s, p.s); }
