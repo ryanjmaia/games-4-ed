@@ -195,6 +195,14 @@ input:focus-visible + .chip{outline:3px solid var(--green);outline-offset:2px}
 .item[disabled]{display:none}
 .owned{display:none}
 @media (hover:hover) and (pointer:fine){ .botbar > .blade{display:none} }
+.rune{position:absolute;left:50%;z-index:19;transform:translate(-50%,-50%);pointer-events:none;width:max-content;max-width:min(94vw, 540px);
+  background:linear-gradient(#5f6780,#474e64);border:3px solid #2b3043;border-radius:14px;box-shadow:inset 0 0 0 2px #828aa2, 0 12px 34px rgba(0,0,0,.6);
+  padding:14px clamp(10px, 3vw, 20px) 16px;text-align:center;color:#fff3d6;text-shadow:0 1px 0 #2b3043;animation:runein .35s ease-out}
+.rune h3{margin:0 0 8px;font-family:var(--title);font-weight:700;color:var(--gold);font-size:clamp(16px, 4.6vw, 22px);line-height:1.1}
+.rune .verse{margin:0;font-size:clamp(11.5px, 3.15vw, 16px);line-height:1.45;font-style:italic}
+.rune .prophecy{display:block;margin:9px 0 5px;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+@keyframes runein{from{opacity:0;transform:translate(-50%,-46%)}to{opacity:1;transform:translate(-50%,-50%)}}
+@media (prefers-reduced-motion: reduce){ .rune{animation:none} }
 @keyframes slowflash{0%,100%{opacity:1}50%{opacity:.35}}
 @media (prefers-reduced-motion: reduce){ .skiphint{animation:none} }
 .mini{font-family:var(--body);font-weight:700;font-size:12px;background:var(--panel2);border:1.5px solid var(--line);border-radius:8px;padding:5px 8px;cursor:pointer;color:var(--ink)}
@@ -262,6 +270,25 @@ input:focus-visible + .chip{outline:3px solid var(--green);outline-offset:2px}
       </div>
 
       <div class="goalflash" id="goalFlash" hidden><span class="label" id="gfLabel"></span><div class="eq" id="gfEq"></div><div class="gfo" id="gfObj"></div></div>
+
+      <div class="rune" id="rune" hidden>
+        <h3>The Legend of the Number Knight</h3>
+        <p class="verse">When shadows first crept up from Keep and Cave,<br>
+A knight arose whose blade could bear a sign.<br>
+He set its number right and, true and brave,<br>
+He made each monster's broken sum align.<br>
+No strength alone could break the cursed horde;<br>
+Each foe held out a riddle with a hole.<br>
+But when the missing number filled his sword,<br>
+The riddle closed; the dark lost its control.</p>
+        <span class="prophecy">The prophecy</span>
+        <p class="verse">A knight shall come to take the hero's place.<br>
+Her dragon's wings shall bear her through the sky.<br>
+Through Glade and Cave and Keep her blade shall face<br>
+The Slime, the Drake, the Lich that looms on high.<br>
+If every missing number she makes true,<br>
+The dark will break, and light will dawn anew.</p>
+      </div>
 
       <div class="keypad" id="keypad" hidden>
         <div class="kp-show"><span class="label">Type a blade number</span><span id="kpVal">0</span></div>
@@ -847,6 +874,13 @@ const joy = {x: 0, y: 0};
 let typed = '', typedT = 0;
 
 let skipHoldT = 0;
+const RUNE = {x: WW/2, y: WH/2 - 10}, RUNE_R = 26;
+function updateRune(){
+  const show = state === 'play' && game && game.stage === 0 && room && room.type === 'start' && player && dist(player, RUNE) < RUNE_R;
+  const el = $('rune');
+  if (show && el.hidden){ el.style.top = (OY + WH * S * .4) + 'px'; el.hidden = false; }
+  else if (!show && !el.hidden) el.hidden = true;
+}
 function update(dt){
   game.stats.time += dt;
   if (game.stage < 0 && keys.Space){
@@ -1008,7 +1042,7 @@ function update(dt){
 
   // tips
   tip = null;
-  if (room.type === 'start' && game.stage === 0) tip = 'Set your blade to the missing number, then strike. Doors lock until every monster is beaten.';
+  if (room.type === 'start' && game.stage === 0 && dist(player, RUNE) >= RUNE_R) tip = 'An old rune stone stands here. Walk up to it to read it.';
   else if (room.type === 'start' && game.stage === 1) tip = 'Monsters here can carry different equations. Change your blade for each one.';
   else if (room.type === 'start' && game.stage === 2) tip = 'Every monster has its own equation now. Armored knights need two hits.';
   if (room.type === 'shop' && room.shop) for (const it of room.shop) if (!it.sold && Math.hypot(player.x - it.x, player.y - it.y) < 14) tip = `${it.name}: ${it.price} ★. Strike to buy.`;
@@ -2029,6 +2063,7 @@ function frame(now){
   if (state === 'play' && fadeDir <= 0) update(dt);
   if (state === 'cut' && cut) updateCut(dt);
   if (state === 'cut' && cut) renderCut(); else render(dt);
+  updateRune();
   hudT -= dt;
   if (hudT <= 0 && state === 'play'){ hudT = .1; updateTarget(); if (game.charm || player.slowT || player.omniT || player.invT) updateHud(); updateCooldowns(); }
   requestAnimationFrame(frame);
