@@ -244,6 +244,7 @@ input:focus-visible + .chip{outline:3px solid var(--green);outline-offset:2px}
       <div class="overlay" id="pauseScreen" hidden>
         <h2>Paused</h2>
         <div class="row"><button class="big-btn" id="resumeBtn">Keep going</button><button class="ghost-btn" id="quitBtn">Main menu</button></div>
+        <div class="setting"><span class="label">Settings</span><button class="ghost-btn" id="musicBtn" aria-pressed="true">♪ Music on</button></div>
       </div>
 
       <div class="overlay" id="msgScreen" hidden>
@@ -271,9 +272,9 @@ input:focus-visible + .chip{outline:3px solid var(--green);outline-offset:2px}
       <div class="count arrow" id="arrowCount" title="Arrows" hidden><span class="ic">➶</span><span id="arrows">0</span></div>
     </div>
     <div class="info">
-      <div class="stage-name"><span id="stageName">Stage 1</span><br><span id="roomName"></span></div>
-      <button class="mini" id="musicBtn" aria-pressed="true">♪ Music on</button>
+      <div class="stage-name" hidden><span id="stageName">Stage 1</span><br><span id="roomName"></span></div>
       <canvas id="minimap" aria-label="Map"></canvas>
+      <button class="mini" id="pauseBtn" aria-label="Pause">❚❚ Pause</button>
     </div>
 
     <div class="target" id="target">
@@ -2143,6 +2144,7 @@ $('musicBtn').onclick = () => setMusic(!musicOn);
 cv.addEventListener('pointerdown', () => { if (state === 'cut') skipCut(); });
 setMusic(musicOn);
 $('resumeBtn').onclick = resume;
+$('pauseBtn').onclick = () => pause();
 $('quitBtn').onclick = () => { save(); toTitle(); };
 
 /* ---------- boot ---------- */
