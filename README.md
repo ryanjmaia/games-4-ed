@@ -1,6 +1,6 @@
 # Games 4 Ed
 
-Free browser math games for kids. No ads, no accounts, no tracking.
+Free browser educational games for kids. No ads, no accounts, no tracking.
 
 ## How the site is organized
 
