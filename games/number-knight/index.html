@@ -67,7 +67,8 @@ body{padding:0!important}
   .target{flex:0 1 560px;margin:0 auto 0 0;min-width:0}
   .botbar{flex-direction:row;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px}
   .botbar > .touch{position:absolute;left:max(14px, env(safe-area-inset-left, 0px));right:max(14px, env(safe-area-inset-right, 0px));bottom:max(14px, env(safe-area-inset-bottom, 0px));display:flex;justify-content:space-between;align-items:flex-end}
-  .eq{font-size:42px}
+  .eq{font-size:52px}
+  .target .label{font-size:13px}
   .overlay h1{font-size:64px}
   .overlay p{font-size:16px}
 }
@@ -84,13 +85,13 @@ body{padding:0!important}
 
 .target{background:rgba(26,32,48,.9);border:2px solid var(--line);border-radius:12px;padding:6px 12px 8px;text-align:center;min-height:74px;display:flex;flex-direction:column;justify-content:center;gap:2px}
 .label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
-.eq{font-family:var(--pixel);font-size:clamp(28px, 8.5vw, 40px);font-weight:700;line-height:1.1;display:flex;gap:.25em;justify-content:center;align-items:center;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.eq{font-family:var(--pixel);font-size:clamp(32px, 10vw, 48px);font-weight:700;line-height:1.1;display:flex;gap:.25em;justify-content:center;align-items:center;flex-wrap:wrap;font-variant-numeric:tabular-nums}
 .eq .op{color:var(--muted)}
 .eq .blank{display:inline-flex;min-width:1.5em;justify-content:center;border:3px dashed var(--gold);border-radius:8px;color:var(--gold);padding:0 .12em;line-height:1.05}
 .eq.match .blank{background:rgba(255,203,71,.16)}
 .next{font-size:13px;color:var(--muted);font-family:var(--pixel)}
 .timer{height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin:2px auto 0;width:min(240px, 70%)}
-.obj{font-size:14.5px;line-height:1.35;color:var(--ink);max-width:46ch;margin:4px auto 0;text-wrap:balance}
+.obj{font-size:17px;font-weight:700;line-height:1.35;color:var(--ink);max-width:46ch;margin:4px auto 0;text-wrap:balance}
 .timer i{display:block;height:100%;background:var(--gold);width:100%}
 
 .stage{position:absolute;inset:0;overflow:hidden;background:#07090f}
@@ -161,6 +162,14 @@ input:focus-visible + .chip{outline:3px solid var(--green);outline-offset:2px}
 @media (hover:hover) and (pointer:fine){ .touch{display:none} }
 @media (hover:none),(pointer:coarse){ .keys{display:none} .item .key{display:none} }
 
+.goalflash{position:absolute;left:50%;z-index:20;transform:translate(-50%,-50%);pointer-events:none;text-align:center;
+  background:rgba(10,12,20,.82);border:2px solid var(--gold);border-radius:16px;padding:12px 22px 14px;max-width:min(92vw, 640px);
+  display:flex;flex-direction:column;gap:4px;align-items:center;animation:goalfade 2.6s ease forwards}
+.goalflash .label{font-size:14px;color:var(--gold)}
+.goalflash .eq{font-size:clamp(44px, 13vw, 84px)}
+.goalflash .gfo{font-size:clamp(20px, 5.4vw, 30px);font-weight:700;line-height:1.25;text-wrap:balance}
+@keyframes goalfade{0%{opacity:0;transform:translate(-50%,-50%) scale(.9)}10%{opacity:1;transform:translate(-50%,-50%) scale(1)}72%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion: reduce){ .goalflash{animation:goalfade-rm 2.6s linear forwards} @keyframes goalfade-rm{0%,80%{opacity:1}100%{opacity:0}} }
 .mini{font-family:var(--body);font-weight:700;font-size:12px;background:var(--panel2);border:1.5px solid var(--line);border-radius:8px;padding:5px 8px;cursor:pointer;color:var(--ink)}
 .tip{position:fixed;z-index:40;left:0;top:0;max-width:min(290px, calc(100vw - 16px));background:var(--gold);color:#1a1405;border-radius:10px;padding:8px 12px;font-weight:700;font-size:14px;line-height:1.35;box-shadow:0 6px 20px rgba(0,0,0,.45);pointer-events:none;animation:tipbob 1.2s ease-in-out infinite}
 .tip::after{content:"";position:absolute;left:calc(var(--ax, 50%) - 8px);border:8px solid transparent}
@@ -223,6 +232,8 @@ input:focus-visible + .chip{outline:3px solid var(--green);outline-offset:2px}
         <div class="stats" id="msgStats"></div>
         <div class="row" id="msgBtns"></div>
       </div>
+
+      <div class="goalflash" id="goalFlash" hidden><span class="label" id="gfLabel"></span><div class="eq" id="gfEq"></div><div class="gfo" id="gfObj"></div></div>
 
       <div class="keypad" id="keypad" hidden>
         <div class="kp-show"><span class="label">Type a blade number</span><span id="kpVal">0</span></div>
@@ -592,6 +603,7 @@ function enterRoom(r, fromDir){
   if (first && r.type === 'boss') showToast(boss.name + '!', '#ff5d5d', 2.2);
   if (first && r.type === 'shop') showToast('A shop! Walk onto an item, then strike to buy.', '#ffcb47', 3);
   updateRoomName(); drawMinimap(); updateTarget(true);
+  if (r.type !== 'tut' && (boss || monsters.length)) setTimeout(() => { if (state === 'play' && room === r) flashGoal(); }, 350);
 }
 function updateRoomName(){
   if (room.type === 'tut'){ $('roomName').textContent = `Lesson ${room.step + 1} of ${LESSONS.length}`; return; }
@@ -1473,7 +1485,7 @@ function render(dt){
   }
   if (room.type === 'start'){ const sx = WW/2, sy = WH/2 - 10; ctx.fillStyle = '#7d8598'; ctx.fillRect(sx - 6, sy - 6, 12, 10); ctx.fillStyle = '#5c6478'; ctx.fillRect(sx - 6, sy + 4, 12, 2); ctx.fillStyle = '#ffcb47'; ctx.fillRect(sx - 3, sy - 3, 6, 1.2); ctx.fillRect(sx - 3, sy, 4, 1.2); }
 
-  if (room.type === 'tut' && tut.marker && !room.tutDone){ const mk = tut.marker, pr = 8 + Math.sin(now * 4); ctx.fillStyle = 'rgba(255,203,71,.25)'; ctx.beginPath(); ctx.ellipse(mk.x, mk.y, pr + 3, (pr + 3) * .6, 0, 0, 6.3); ctx.fill(); ctx.strokeStyle = '#ffcb47'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(mk.x, mk.y, pr, pr * .6, 0, 0, 6.3); ctx.stroke(); }
+  if (room.type === 'tut' && tut.marker && !room.tutDone){ const mk = tut.marker, pr = 14 + Math.sin(now * 4) * 1.5; ctx.fillStyle = 'rgba(255,203,71,.25)'; ctx.beginPath(); ctx.ellipse(mk.x, mk.y, pr + 3, (pr + 3) * .6, 0, 0, 6.3); ctx.fill(); ctx.strokeStyle = '#ffcb47'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(mk.x, mk.y, pr, pr * .6, 0, 0, 6.3); ctx.stroke(); }
   for (const d of drops) drawDrop(d, now);
   // y-sorted actors
   const actors = monsters.map(m => ({y: m.y, f: () => drawMonster(m, now)}));
@@ -1483,7 +1495,7 @@ function render(dt){
   for (const s of shots) drawShot(s, now);
   // equation bubbles on top so they never hide
   for (const m of monsters) if (m.spawnT <= 0 && m.type !== 'statue') drawBubble(m.eq, m.x, m.y - m.r - 3);
-  if (tutPoint){ const by = tutPoint.y + Math.sin(now * 6) * 2; ctx.fillStyle = '#ffcb47'; ctx.strokeStyle = '#1b1d2a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(tutPoint.x - 5, by - 7); ctx.lineTo(tutPoint.x + 5, by - 7); ctx.lineTo(tutPoint.x, by); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  if (tutPoint){ const by = tutPoint.y + Math.sin(now * 6) * 2; ctx.fillStyle = '#ffcb47'; ctx.strokeStyle = '#1b1d2a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(tutPoint.x - 7, by - 10); ctx.lineTo(tutPoint.x + 7, by - 10); ctx.lineTo(tutPoint.x, by); ctx.closePath(); ctx.fill(); ctx.stroke(); }
   for (const p of parts){ ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.c; ctx.fillRect(p.x - p.s/2, p.y - p.s/2, p.s, p.s); }
   ctx.globalAlpha = 1;
   for (const t of texts){ ctx.globalAlpha = Math.min(1, t.life / t.max * 2); drawText(t.text, t.x, t.y, t.size, t.color, '#1b1d2a', true); }
@@ -1538,9 +1550,9 @@ function tutUpdate(dt){
   }
   switch (tut.step){
     case 0:
-      obj = 'Walk to the glowing circle.'; point = {x: tut.marker.x, y: tut.marker.y - 8};
+      obj = 'Walk to the glowing circle.'; point = {x: tut.marker.x, y: tut.marker.y - 14};
       html = t ? 'Drag the joystick to walk' : `Walk with ${K('W')}${K('A')}${K('S')}${K('D')} or the arrow keys`; target = t ? 'joy' : 'stage';
-      if (dist(player, tut.marker) < 10) done = true;
+      if (dist(player, tut.marker) < 14) done = true;
       break;
     case 1: {
       const d = monsters.find(m => m.type === 'dummy');
@@ -1631,7 +1643,27 @@ function endTutorial(){
   startStage(true);
 }
 
-function setObj(text){ const el = $('tObj'); if (el.textContent !== text) el.textContent = text; el.hidden = !text; }
+function setObj(text){
+  const el = $('tObj');
+  if (el.textContent !== text){
+    const same = el.textContent.replace(/\(\d+ of \d+\)/, '') === text.replace(/\(\d+ of \d+\)/, '');
+    el.textContent = text;
+    el.hidden = !text;
+    if (text && !same) flashGoal();
+  }
+  el.hidden = !text;
+}
+let goalTimer = 0;
+function flashGoal(){
+  if (state !== 'play') return;
+  const el = $('goalFlash');
+  $('gfLabel').textContent = $('tLabel').textContent;
+  $('gfEq').innerHTML = $('tEq').innerHTML; $('gfEq').hidden = !$('tEq').innerHTML;
+  $('gfObj').textContent = $('tObj').hidden ? '' : $('tObj').textContent; $('gfObj').hidden = !$('gfObj').textContent;
+  el.style.top = (OY + WH * S * .42) + 'px';
+  el.hidden = true; void el.offsetWidth; el.hidden = false;
+  clearTimeout(goalTimer); goalTimer = setTimeout(() => { el.hidden = true; }, 2650);
+}
 
 /* ---------- tooltips that point at the real controls ---------- */
 let tipKey = '';
@@ -1660,7 +1692,7 @@ function setTip(html, target){
 /* ---------- cutscenes ---------- */
 const CUT_LEN = {pickup: 5.2, flight: 4.6, landing: 4.4};
 function startCut(kind){
-  setTip(null); tutPoint = null;
+  setTip(null); tutPoint = null; $('goalFlash').hidden = true;
   for (const k in keys) keys[k] = false; joy.x = joy.y = 0;
   cut = {kind, t: 0, dur: CUT_LEN[kind]};
   if (kind === 'pickup'){ cut.px = player.x; cut.py = player.y; }
@@ -1997,7 +2029,7 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; joy.x = joy.y = 0; pause(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
-function pause(){ if (state !== 'play') return; state = 'paused'; setTip(null); show('pauseScreen'); }
+function pause(){ if (state !== 'play') return; state = 'paused'; setTip(null); $('goalFlash').hidden = true; show('pauseScreen'); }
 function resume(){ if (state !== 'paused') return; state = 'play'; show(null); last = performance.now(); }
 
 // blade buttons: tap or hold to repeat
