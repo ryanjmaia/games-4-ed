@@ -118,6 +118,28 @@ input:focus-visible + .chip{outline:3px solid var(--mint);outline-offset:2px}
 .results div{display:flex;flex-direction:column;gap:2px}
 .results .val{font-size:24px}
 
+/* high scores */
+.entry{display:flex;flex-direction:column;align-items:center;gap:8px}
+.entry .label{color:var(--mint)}
+.initials{
+  width:6.4ch;font-family:var(--display);font-size:34px;letter-spacing:.2em;padding-left:.2em!important;text-align:center;text-transform:uppercase;
+  color:var(--amber);background:var(--deep);border:3px solid var(--amber);border-radius:12px;padding:6px 4px;caret-color:var(--amber);
+}
+.initials:focus{outline:3px solid var(--mint);outline-offset:2px}
+.entry-err{font-size:14px;color:var(--rose);min-height:1.3em}
+#overScreen,#scoresScreen{background:rgba(8,6,31,.95)}
+.board{border-collapse:collapse;font-variant-numeric:tabular-nums;min-width:220px}
+.board th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:0 10px 4px}
+.board td{padding:3px 10px;font-size:16px}
+.board td.ini{font-family:var(--display);letter-spacing:.12em;color:var(--amber)}
+.board td.sc{font-family:var(--display);text-align:right}
+.board td.rk,.board td.lv{color:var(--muted);font-weight:700}
+.board tr.me td{background:rgba(76,230,198,.18)}
+.board tr.me td:first-child{border-radius:8px 0 0 8px} .board tr.me td:last-child{border-radius:0 8px 8px 0}
+.board .none{color:var(--muted);font-size:14px;padding:10px}
+.tabs{display:flex;flex-wrap:wrap;justify-content:center;gap:5px}
+.tabs .chip{min-height:34px;padding:4px 11px;font-size:14px}
+.linkish{background:none;border:0;color:var(--muted);font:inherit;font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:4px}
 .pad{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:10px}
 .padbtn{
   height:62px;border-radius:14px;border:2px solid var(--line);background:var(--night);color:var(--ink);
@@ -189,8 +211,19 @@ input:focus-visible + .chip{outline:3px solid var(--mint);outline-offset:2px}
       <label class="toggle"><input type="checkbox" id="levelUp" checked> Level up every 5 problems solved</label>
 
       <button class="big-btn" id="startBtn">Start</button>
-      <a class="home-link" href="../../">← All games</a>
+      <div class="row"><button class="ghost-btn" id="scoresBtn">High scores</button><a class="home-link" href="../../">← All games</a></div>
       <p class="small" id="bestLine"></p>
+    </div>
+
+    <div class="overlay" id="scoresScreen" hidden>
+      <h2>High scores</h2>
+      <div class="tabs" role="radiogroup" aria-label="Math" id="scoreTabs"></div>
+      <table class="board" id="scoreBoard"></table>
+      <p class="small">Scores are saved on this device only.</p>
+      <div class="row">
+        <button class="big-btn" id="scoresBack">Back</button>
+      </div>
+      <button class="linkish" id="clearBtn">Clear these scores</button>
     </div>
 
     <div class="overlay" id="pauseScreen" hidden>
@@ -209,7 +242,15 @@ input:focus-visible + .chip{outline:3px solid var(--mint);outline-offset:2px}
         <div><span class="label">Level</span><span class="val" id="finalLevel">1</span></div>
       </div>
       <p class="small" id="finalBest"></p>
-      <div class="row">
+      <form class="entry" id="entry" hidden autocomplete="off">
+        <span class="label" id="entryTitle">New high score!</span>
+        <label for="initials">Type your initials</label>
+        <input class="initials" id="initials" maxlength="3" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done" aria-describedby="entryErr">
+        <span class="entry-err" id="entryErr" aria-live="polite"></span>
+        <button class="big-btn" id="saveBtn" type="submit">Save</button>
+      </form>
+      <table class="board" id="overBoard" hidden></table>
+      <div class="row" id="overBtns">
         <button class="big-btn" id="againBtn">Play again</button>
         <button class="ghost-btn" id="menuBtn">Change math</button>
       </div>
@@ -327,6 +368,7 @@ function onSettings(){
   settings.lv = parseInt(document.querySelector('input[name="lv"]:checked').value, 10);
   settings.levelUp = $('levelUp').checked;
   store.set('nb-op', settings.op); store.set('nb-lv', settings.lv); store.set('nb-levelup', settings.levelUp ? 'on' : 'off');
+  if ($('bestLine')) $('bestLine').textContent = bestLineText();
   $('levelDesc').textContent = settings.op === 'mix'
     ? 'All four operations at level ' + settings.lv
     : levelLabel(settings.op, settings.lv);
@@ -727,8 +769,72 @@ function frame(now){
 }
 
 /* ---------- screens ---------- */
-function show(id){ ['titleScreen','pauseScreen','overScreen'].forEach(s => $(s).hidden = s !== id); }
-function best(){ return parseInt(store.get('nb-best') || '0', 10) || 0; }
+function show(id){ ['titleScreen','pauseScreen','overScreen','scoresScreen'].forEach(s => $(s).hidden = s !== id); }
+
+/* ---------- high scores: a top 10 for each kind of math, saved on this device ---------- */
+const BOARD_SIZE = 10;
+const OP_TABS = [['add','+ Add'],['sub','− Subtract'],['mul','× Multiply'],['div','÷ Divide'],['mix','? Mix']];
+// Three-letter combinations that are not allowed as initials (rude words, slurs and close spellings of them).
+const BLOCKED = new Set(`ASS ASZ AZZ ARS ANL ANS BCH BJS BJB BUM CNT COC COK COX CUM CUN CKS DIC DIK DIX DIQ DCK DKS DMN DYK
+FAG FAP FCK FCU FKU FUC FUK FUQ FUX FKN FKR FFS FGT GAY HOE HOR HOS JAP JEW JIZ JZZ KKK KIK KYK KYS KUM KOK KOX
+LSD MLF NAZ NZI NIG NGR NGA NGG NIP PAK PNS PIS PSS PIZ PUS PRN PRK RAP RPE SEX SXX SXY SHT SHI SLT SLU SOB SUC SUK
+SCK SPZ STD TIT TTS TWT VAG WAB WOP WTF WHR XXX`.split(/\s+/));
+const cleanInitials = v => (v || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
+function initialsProblem(v){
+  if (v.length < 3) return 'Use three letters.';
+  if (BLOCKED.has(v)) return 'Those letters are not allowed. Try different ones.';
+  return '';
+}
+function loadBoard(op){
+  try { const a = JSON.parse(store.get('nb-scores-' + op) || '[]'); return Array.isArray(a) ? a.filter(r => r && typeof r.s === 'number').slice(0, BOARD_SIZE) : []; }
+  catch(e){ return []; }
+}
+function saveBoard(op, rows){ store.set('nb-scores-' + op, JSON.stringify(rows.slice(0, BOARD_SIZE))); }
+function qualifies(op, score){
+  if (score <= 0) return false;
+  const b = loadBoard(op);
+  return b.length < BOARD_SIZE || score > b[b.length - 1].s;
+}
+function best(op = settings.op){ const b = loadBoard(op); return b.length ? b[0].s : 0; }
+function boardHTML(rows, meIdx){
+  if (!rows.length) return '<tr><td class="none" colspan="4">No scores yet. Play a game to get on the board!</td></tr>';
+  return '<thead><tr><th>#</th><th>Name</th><th>Score</th><th>Level</th></tr></thead><tbody>' +
+    rows.map((r, i) => `<tr${i === meIdx ? ' class="me"' : ''}><td class="rk">${i + 1}</td><td class="ini">${cleanInitials(r.n) || '???'}</td><td class="sc">${r.s}</td><td class="lv">${r.lv || ''}</td></tr>`).join('') + '</tbody>';
+}
+function bestLineText(){ const b = best(); return b ? `Best ${opLabel(settings.op)} score: ${b}` : ''; }
+let scoresOp = 'add', clearArmed = false;
+function openScores(){
+  scoresOp = settings.op; clearArmed = false; $('clearBtn').textContent = 'Clear these scores';
+  $('scoreTabs').innerHTML = OP_TABS.map(([k, name]) => `<input class="sr" type="radio" name="sop" id="sop-${k}" value="${k}"${k === scoresOp ? ' checked' : ''}><label class="chip" for="sop-${k}">${name}</label>`).join('');
+  $('scoreTabs').querySelectorAll('input').forEach(el => el.addEventListener('change', () => { scoresOp = el.value; clearArmed = false; $('clearBtn').textContent = 'Clear these scores'; renderScores(); }));
+  renderScores(); show('scoresScreen'); $('scoresBack').focus();
+}
+function renderScores(){ $('scoreBoard').innerHTML = boardHTML(loadBoard(scoresOp), -1); $('clearBtn').hidden = !loadBoard(scoresOp).length; }
+$('scoresBtn').onclick = openScores;
+$('scoresBack').onclick = () => { show('titleScreen'); $('bestLine').textContent = bestLineText(); };
+$('clearBtn').onclick = () => {
+  if (!clearArmed){ clearArmed = true; $('clearBtn').textContent = 'Tap again to clear ' + OP_TABS.find(t => t[0] === scoresOp)[1].slice(2) + ' scores'; return; }
+  saveBoard(scoresOp, []); clearArmed = false; $('clearBtn').textContent = 'Clear these scores'; renderScores();
+};
+$('initials').addEventListener('input', e => {
+  const v = cleanInitials(e.target.value);
+  if (e.target.value !== v) e.target.value = v;
+  $('entryErr').textContent = '';
+});
+$('entry').addEventListener('submit', e => {
+  e.preventDefault();
+  if (!G || G.saved) return;
+  const v = cleanInitials($('initials').value), err = initialsProblem(v);
+  if (err){ $('entryErr').textContent = err; $('initials').focus(); $('initials').select(); return; }
+  const rows = loadBoard(G.op), row = {n: v, s: G.score, lv: G.level, d: Date.now()};
+  rows.push(row); rows.sort((a, b) => b.s - a.s || a.d - b.d);
+  const idx = rows.indexOf(row);
+  saveBoard(G.op, rows); store.set('nb-initials', v); G.saved = true;
+  $('entry').hidden = true; $('overBtns').hidden = false;
+  $('overBoard').innerHTML = boardHTML(rows.slice(0, BOARD_SIZE), idx); $('overBoard').hidden = false;
+  $('finalBest').textContent = idx === 0 ? `New best ${opLabel(G.op)} score!` : `You placed #${idx + 1} for ${opLabel(G.op)}.`;
+  $('againBtn').focus();
+});
 
 function start(){
   if (!ac){ try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
@@ -741,15 +847,25 @@ function pause(){ if (state !== 'play') return; state = 'paused'; show('pauseScr
 function resume(){ if (state !== 'paused') return; state = 'play'; show(null); $('pauseBtn').textContent = 'Pause'; last = performance.now(); }
 function toMenu(){
   state = 'title'; G = null; show('titleScreen'); $('pauseBtn').textContent = 'Pause';
-  const b = best(); $('bestLine').textContent = b ? 'Best score: ' + b : '';
+  $('bestLine').textContent = bestLineText();
   showSample();
 }
 function gameOver(){
   state = 'over'; clearKeys();
-  const b = Math.max(best(), G.score); store.set('nb-best', b);
   $('finalScore').textContent = G.score; $('finalSolved').textContent = G.solved; $('finalLevel').textContent = G.level;
-  $('finalBest').textContent = G.score >= b && G.score > 0 ? 'New best score!' : 'Best score: ' + b;
-  show('overScreen'); $('againBtn').focus();
+  const rows = loadBoard(G.op), top = qualifies(G.op, G.score);
+  $('overBoard').hidden = true; $('entryErr').textContent = '';
+  $('entry').hidden = !top; $('overBtns').hidden = top;
+  if (top){
+    let place = rows.filter(r => r.s >= G.score).length + 1;
+    $('entryTitle').textContent = place === 1 ? `New best ${opLabel(G.op)} score!` : `High score! You placed #${place}`;
+    $('finalBest').textContent = '';
+    $('initials').value = cleanInitials(store.get('nb-initials'));
+  } else {
+    $('finalBest').textContent = rows.length >= BOARD_SIZE ? `Score to beat for the top ${BOARD_SIZE}: ${rows[rows.length - 1].s + 1}` : '';
+  }
+  show('overScreen');
+  if (top){ $('initials').focus(); $('initials').select(); } else $('againBtn').focus();
 }
 
 $('startBtn').onclick = start;
@@ -811,7 +927,16 @@ cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', 
 new ResizeObserver(resize).observe(stage);
 resize();
 onSettings();
-const bst = best(); if (bst) $('bestLine').textContent = 'Best score: ' + bst;
+// carry an old single best score over to the new boards, once
+(() => {
+  const old = parseInt(store.get('nb-best') || '0', 10) || 0;
+  if (old > 0 && !store.get('nb-scores-moved')){
+    const op = settings.op, rows = loadBoard(op);
+    if (!rows.length) saveBoard(op, [{n: '???', s: old, lv: 0, d: 0}]);
+  }
+  store.set('nb-scores-moved', '1');
+})();
+$('bestLine').textContent = bestLineText();
 requestAnimationFrame(frame);
 })();
 </script>
