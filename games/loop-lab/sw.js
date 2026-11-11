@@ -1,5 +1,5 @@
 // Loop Lab offline helper: keeps the app on the device so it opens without internet.
-const CACHE = 'looplab-v5';
+const CACHE = 'looplab-v6';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './lame.min.js'];
 
 self.addEventListener('install', e => {

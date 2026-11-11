@@ -384,6 +384,7 @@ body.phone .barBtn{min-width:22px; height:24px}
 <div id="countIn" class="hidden"></div>
 <div id="toast"></div>
 <input type="file" id="fileIn" accept=".json,application/json" class="hidden">
+<input type="file" id="midiIn" accept=".mid,.midi,.zip,audio/midi,audio/x-midi,application/zip" class="hidden">
 
 <script>
 (() => {
@@ -1450,11 +1451,12 @@ function openSongs(){
       <button class="btn" id="newSongBtn">✨ New song</button>
       <button class="btn" id="fileSaveBtn">📤 Save song file</button>
       <button class="btn" id="fileOpenBtn">📥 Open song file</button>
+      <button class="btn" id="midiOpenBtn">🎹 Open MIDI file</button>
       <div class="spacer"></div><button class="btn" data-close>Close</button>
     </div>
     <div class="row" style="margin-top:12px"><b style="font-size:15px">📱 Screen layout</b>
       <div class="chs" id="layoutChs">${[['auto','Automatic'],['phone','Phone'],['big','Big screen']].map(([v,l]) => `<button data-v="${v}" class="${layoutPref===v?'on':''}" style="font-size:14px">${l}</button>`).join('')}</div></div>
-    <p style="font-size:13px;color:var(--mute);margin-bottom:0">Saved songs stay in this browser. “Save song file” makes a Loop Lab file you can open again anywhere. For GarageBand, BandLab and other music apps, use 📤 Export.</p>`);
+    <p style="font-size:13px;color:var(--mute);margin-bottom:0">Saved songs stay in this browser. “Save song file” makes a Loop Lab file you can open again anywhere. For GarageBand, BandLab and other music apps, use 📤 Export. “Open MIDI file” brings in songs from Note Lab or any MIDI file.</p>`);
   const nameIn = $('#songName'); nameIn.focus();
   const doSave = () => {
     const name = nameIn.value.trim() || ('My Song ' + (list.length+1));
@@ -1478,6 +1480,7 @@ function openSongs(){
   }, openSongs);
   $('#fileSaveBtn').onclick = () => saveFile(fileBase() + '.json', new Blob([snapshot()], {type:'application/json'}));
   $('#fileOpenBtn').onclick = () => $('#fileIn').click();
+  $('#midiOpenBtn').onclick = () => $('#midiIn').click();
   $$('#layoutChs button').forEach(b => b.onclick = () => { layoutPref = b.dataset.v; lsSet('looplab-layout', layoutPref); $$('#layoutChs button').forEach(x => x.classList.toggle('on', x === b)); applyLayout(false); });
 }
 $('#fileIn').onchange = async e => {
@@ -1486,6 +1489,118 @@ $('#fileIn').onchange = async e => {
   catch(err){ toast('That file isn’t a Loop Lab song'); }
 };
 const fileBase = () => (songName || 'loop-lab-song').replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-').toLowerCase() || 'loop-lab-song';
+
+/* ================= MIDI file reading (shared by Loop Lab and Note Lab) ================= */
+// Finds the first file inside a .zip whose name ends with one of exts. Handles stored and compressed entries.
+async function readZipEntry(buf, exts){
+  const u = new Uint8Array(buf), dv = new DataView(buf);
+  let e = -1; for (let i = u.length - 22; i >= Math.max(0, u.length - 66000); i--) if (dv.getUint32(i, true) === 0x06054b50){ e = i; break; }
+  if (e < 0) throw new Error('notzip');
+  const count = dv.getUint16(e + 10, true); let p = dv.getUint32(e + 16, true);
+  for (let k = 0; k < count && dv.getUint32(p, true) === 0x02014b50; k++){
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true), nlen = dv.getUint16(p + 28, true),
+      xlen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true), lh = dv.getUint32(p + 42, true);
+    const name = new TextDecoder().decode(u.subarray(p + 46, p + 46 + nlen));
+    p += 46 + nlen + xlen + clen;
+    if (name.startsWith('__MACOSX') || !exts.some(x => name.toLowerCase().endsWith(x))) continue;
+    const start = lh + 30 + dv.getUint16(lh + 26, true) + dv.getUint16(lh + 28, true), data = u.subarray(start, start + csize);
+    if (method === 0) return {name, data};
+    if (method === 8) return {name, data: new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer())};
+  }
+  throw new Error('nomidiinzip');
+}
+async function readMidiFile(file){
+  const buf = await file.arrayBuffer(), u = new Uint8Array(buf);
+  if (u[0] === 0x50 && u[1] === 0x4B) return parseMidi((await readZipEntry(buf, ['.mid', '.midi'])).data);
+  return parseMidi(u);
+}
+// Returns {ppq, bpm, tsNum, tsDen, groups:[{name, ch, prog, notes:[{t, d, m, v}]}]}; one group per track + channel.
+function parseMidi(u){
+  const dv = new DataView(u.buffer, u.byteOffset, u.byteLength);
+  const s4 = q => String.fromCharCode(u[q], u[q+1], u[q+2], u[q+3]);
+  if (s4(0) !== 'MThd') throw new Error('notmidi');
+  const hlen = dv.getUint32(4), ntr = dv.getUint16(10), div = dv.getUint16(12);
+  if (div & 0x8000) throw new Error('smpte');
+  const out = {ppq: div, bpm: 120, tsNum: 4, tsDen: 4, groups: []};
+  const progs = {}; let gotTempo = false, gotTs = false, p = 8 + hlen;
+  for (let t = 0; t < ntr && p + 8 <= u.length; t++){
+    const id = s4(p), len = dv.getUint32(p + 4); p += 8; const end = Math.min(u.length, p + len);
+    if (id !== 'MTrk'){ p = end; continue; }
+    let tick = 0, run = 0, name = ''; const open = new Map(), byCh = new Map();
+    const rv = () => { let v = 0, b; do { b = u[p++]; v = (v << 7) | (b & 0x7f); } while ((b & 0x80) && p < end); return v; };
+    const close = k => { const o = open.get(k); if (!o) return; open.delete(k); const ch = k >> 7;
+      if (!byCh.has(ch)) byCh.set(ch, []); byCh.get(ch).push({t: o.t, d: Math.max(1, tick - o.t), m: k & 127, v: o.v}); };
+    while (p < end){
+      tick += rv(); let st = u[p];
+      if (st & 0x80) p++; else st = run;
+      if (st === 0xFF){ const type = u[p++], l = rv(), d = u.subarray(p, p + l); p += l;
+        if (type === 0x03 && !name) name = new TextDecoder().decode(d).trim();
+        else if (type === 0x51 && l === 3 && !gotTempo){ out.bpm = 60e6/((d[0] << 16) | (d[1] << 8) | d[2]); gotTempo = true; }
+        else if (type === 0x58 && l >= 2 && !gotTs){ out.tsNum = d[0]; out.tsDen = Math.pow(2, d[1]); gotTs = true; }
+        else if (type === 0x2F) break;
+        continue; }
+      if (st === 0xF0 || st === 0xF7){ p += rv(); continue; }
+      run = st; const cmd = st & 0xF0, ch = st & 15, a = u[p++], b = (cmd === 0xC0 || cmd === 0xD0) ? 0 : u[p++];
+      if (cmd === 0x90 && b > 0){ const k = (ch << 7) | a; if (open.has(k)) close(k); open.set(k, {t: tick, v: b}); }
+      else if (cmd === 0x80 || (cmd === 0x90 && b === 0)) close((ch << 7) | a);
+      else if (cmd === 0xC0 && !(ch in progs)) progs[ch] = a;
+    }
+    [...open.keys()].forEach(close);
+    byCh.forEach((notes, ch) => out.groups.push({name, ch, notes: notes.sort((x, y) => x.t - y.t)}));
+    p = end;
+  }
+  out.groups.forEach(g => g.prog = progs[g.ch] || 0);
+  return out;
+}
+
+// Loop Lab sound for a General MIDI program number
+function progToSound(prog, avg){
+  if (prog === 45) return 'pluck';
+  if (prog <= 7) return 'piano'; if (prog === 12 || prog === 13) return 'marimba'; if (prog <= 15) return 'bell';
+  if (prog <= 23) return 'organ'; if (prog <= 31) return 'pluck'; if (prog <= 39) return avg < 40 ? 'subbass' : 'bass';
+  if (prog <= 51) return 'strings'; if (prog <= 55) return 'pad'; if (prog === 57 || prog === 58) return 'bass';
+  if (prog <= 79) return 'lead'; if (prog === 80) return 'chip'; if (prog <= 87) return 'laser'; if (prog <= 95) return 'pad';
+  return 'laser';
+}
+const GM_DRUM = {35:'kickhard',36:'kick',37:'rim',38:'snare',39:'clap',40:'snare909',41:'tomlo',42:'hat',43:'tomlo',44:'hat',45:'tomlo',46:'ohat',
+  47:'tomhi',48:'tomhi',49:'crash',50:'tomhi',51:'ride',52:'crash',53:'ride',54:'shaker',55:'crash',56:'bell',57:'whoosh',59:'ride',63:'stab',
+  69:'shaker',70:'shaker',75:'clave',76:'wood',77:'blip',81:'zap',82:'shaker'};
+const ROLE_ORDER = ['kick','snare','hat','ohat','perc','cym','fx'];
+const fitBars = need => [1,2,4,8].find(b => b*16 >= need) || 8;
+function midiToLoop(mid, fname){
+  const step = mid.ppq/4;
+  const mel = mid.groups.filter(g => g.ch !== 9 && g.notes.length), drumNotes = mid.groups.filter(g => g.ch === 9).flatMap(g => g.notes);
+  const tracks = mel.slice(0, 8).map(g => {
+    const avg = g.notes.reduce((a, n) => a + n.m, 0)/g.notes.length, inst = progToSound(g.prog, avg), oct = SOUNDS[inst].p.oct;
+    // Loop Lab basses sound an octave low, so shift the stored notes up to keep the same pitch
+    return {inst, muted:false, notes: g.notes.map(n => { const st = Math.round(n.t/step); return {midi: clamp(n.m - oct*12, 0, 127), vel: n.v, start: st, dur: Math.max(1, Math.round((n.t + n.d)/step) - st)}; })};
+  });
+  const need = Math.max(1, ...tracks.flatMap(t => t.notes.map(n => n.start + n.dur)));
+  const bars = fitBars(need), cut = need > bars*16;
+  tracks.forEach(t => { t.notes = t.notes.filter(n => n.start < bars*16); t.notes.forEach(n => n.dur = Math.min(n.dur, bars*16 - n.start)); });
+  let rows = null, beatBars = song.beatBars;
+  if (drumNotes.length){
+    const hits = new Map();
+    drumNotes.forEach(n => { const id = GM_DRUM[n.m]; if (!id) return; const st = Math.round(n.t/step); if (!hits.has(id)) hits.set(id, []); hits.get(id).push(st); });
+    const dEnd = Math.max(1, ...[...hits.values()].flat().map(x => x + 1));
+    beatBars = fitBars(dEnd);
+    const ids = [...hits.keys()].sort((a, b) => hits.get(b).length - hits.get(a).length).slice(0, 7)
+      .sort((a, b) => ROLE_ORDER.indexOf(DRUM_BY[a].role) - ROLE_ORDER.indexOf(DRUM_BY[b].role));
+    rows = ids.map(id => { const st = Array(beatBars*16).fill(0); hits.get(id).forEach(x => { if (x < st.length) st[x] = 1; }); return {s:id, steps:st}; });
+  }
+  return {song: {bpm: clamp(Math.round(mid.bpm), 60, 160), bars, beatBars, swing: 0,
+    rows: rows || song.rows.map(r => ({s:r.s, steps:r.steps.slice(), vol:r.vol, pitch:r.pitch, dec:r.dec})),
+    tracks, tweaks: JSON.parse(JSON.stringify(song.tweaks)), custom: song.custom}, cut, kept: !rows, extra: Math.max(0, mel.length - 8)};
+}
+$('#midiIn').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const res = midiToLoop(await readMidiFile(f), f.name);
+    if (!res.song.tracks.length && res.kept){ toast('That MIDI file has no notes in it.'); return; }
+    stopPlayback(); pushUndo(); loadSong(res.song); songName = f.name.replace(/\.(mid|midi|zip)$/i, ''); closeModal();
+    toast('Opened! 🎹 ' + [res.kept ? 'Your beat stayed the same.' : '', res.cut ? 'It was longer than 8 bars, so only the first 8 came in.' : '', res.extra ? 'Only the first 8 instruments fit.' : ''].filter(Boolean).join(' '));
+  } catch(err){ toast('Couldn’t read that file. Pick a .mid file (or the .zip Claude saved).'); }
+};
 
 /* ================= files: zip, midi, wav, mp3 ================= */
 let dlCap = null;
@@ -1717,7 +1832,7 @@ loadSong(saved || newSong());
 setPro(!!lsGet(LS_PRO));
 refreshHeader();
 requestAnimationFrame(frame);
-window.__ll = {get song(){ return song; }, buildMidi, makeZip, toWav, toMp3, selectInst, showTab};
+window.__ll = {get song(){ return song; }, parseMidi, midiToLoop, loadSong, buildMidi, makeZip, toWav, toMp3, selectInst, showTab};
 
 $('#startBtn').onclick = () => { initAudio(); $('#splash').classList.add('hidden'); connectMIDI(true); };
 try {
