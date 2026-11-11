@@ -70,6 +70,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .eq.match .blank{background:rgba(255,203,71,.16)}
 .next{font-size:13px;color:var(--muted);font-family:var(--pixel)}
 .timer{height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin:2px auto 0;width:min(240px, 70%)}
+.obj{font-size:14.5px;line-height:1.35;color:var(--ink);max-width:46ch;margin:4px auto 0;text-wrap:balance}
 .timer i{display:block;height:100%;background:var(--gold);width:100%}
 
 .stage{position:relative;width:100%;aspect-ratio:208/176;border-radius:10px;overflow:hidden;background:#000;border:2px solid var(--line)}
@@ -159,7 +160,15 @@ input:focus-visible + .chip{outline:3px solid var(--green);outline-offset:2px}
 .stage-wrap{order:3;display:contents}
 @media (min-width:900px) and (min-height:560px){ .stage-wrap{display:flex;order:0;grid-column:1;grid-row:1} .side{order:1;grid-column:2;grid-row:1} }
 @media (max-width:899px), (max-height:559px){ .overlay{position:fixed;z-index:20;background:rgba(10,12,20,.97)} }
-@media (prefers-reduced-motion: reduce){ .big-btn:active{transform:none} }
+.mini{font-family:var(--body);font-weight:700;font-size:12px;background:var(--panel2);border:1.5px solid var(--line);border-radius:8px;padding:5px 8px;cursor:pointer;color:var(--ink)}
+.tip{position:fixed;z-index:40;left:0;top:0;max-width:min(290px, calc(100vw - 16px));background:var(--gold);color:#1a1405;border-radius:10px;padding:8px 12px;font-weight:700;font-size:14px;line-height:1.35;box-shadow:0 6px 20px rgba(0,0,0,.45);pointer-events:none;animation:tipbob 1.2s ease-in-out infinite}
+.tip::after{content:"";position:absolute;left:calc(var(--ax, 50%) - 8px);border:8px solid transparent}
+.tip.above::after{top:100%;border-top-color:var(--gold)}
+.tip.below::after{bottom:100%;border-bottom-color:var(--gold)}
+.tip.inside::after{display:none}
+.tip kbd{display:inline-block;background:#1a1405;color:var(--gold);border-radius:5px;padding:0 6px;margin:0 1px;font-family:var(--pixel);font-size:13px;line-height:1.4}
+@keyframes tipbob{50%{transform:translateY(-3px)}}
+@media (prefers-reduced-motion: reduce){ .big-btn:active{transform:none} .tip{animation:none} }
 </style>
 </head>
 <body>
@@ -171,7 +180,7 @@ input:focus-visible + .chip{outline:3px solid var(--green);outline-offset:2px}
 
       <div class="overlay" id="titleScreen">
         <h1>Number Knight</h1>
-        <p>Every monster carries an equation with a missing number. Set your blade to that number, then strike!</p>
+        <p>Every monster carries an equation with a missing number. Set your blade to that number, then strike! New quests start with a quick tutorial.</p>
         <div class="setting" role="radiogroup" aria-labelledby="opL">
           <span class="label" id="opL">Math</span>
           <div class="chips">
@@ -198,21 +207,8 @@ input:focus-visible + .chip{outline:3px solid var(--green);outline-offset:2px}
           <button class="big-btn" id="newBtn">New quest</button>
           <button class="ghost-btn" id="contBtn" hidden>Continue</button>
         </div>
-        <button class="ghost-btn" id="howBtn">How to play</button>
+        <button class="ghost-btn" id="skipBtn">Skip the tutorial</button>
       <a class="home-link" href="../../">← All games</a>
-      </div>
-
-      <div class="overlay" id="howScreen" hidden>
-        <h2>How to play</h2>
-        <ul class="howto">
-          <li><b>1</b><span>Read a monster's equation. The <b>?</b> is the missing number.</span></li>
-          <li><b>2</b><span>Change your blade to that number with <b>−</b> and <b>+</b>, or tap the number to type it.</span></li>
-          <li><b>3</b><span>Strike! The wrong number just clangs off.</span></li>
-          <li><b>4</b><span>Numbers on slime and flames hurt you, unless your blade shows the same number. Then you soak them up.</span></li>
-          <li><b>5</b><span>Bosses change their equation every few seconds. Set your blade for one of them and strike when it comes around.</span></li>
-          <li><b>6</b><span>Collect stars and spend them in shops.</span></li>
-        </ul>
-        <button class="big-btn" id="howBack">Got it</button>
       </div>
 
       <div class="overlay" id="pauseScreen" hidden>
@@ -241,6 +237,8 @@ input:focus-visible + .chip{outline:3px solid var(--green);outline-offset:2px}
       <div class="count star" title="Stars"><span class="ic">★</span><span id="stars">0</span></div>
       <div class="count arrow" id="arrowCount" title="Arrows" hidden><span class="ic">➶</span><span id="arrows">0</span></div>
       <div class="stage-name"><span id="stageName">Stage 1</span><br><span id="roomName"></span></div>
+      <button class="mini" id="musicBtn" aria-pressed="true">♪ Music on</button>
+      <button class="mini" id="skipTut" hidden>Skip tutorial</button>
       <canvas id="minimap" aria-label="Map"></canvas>
     </div>
 
@@ -249,6 +247,7 @@ input:focus-visible + .chip{outline:3px solid var(--green);outline-offset:2px}
       <div class="eq" id="tEq"></div>
       <div class="next" id="tNext"></div>
       <div class="timer" id="tTimer" hidden><i id="tBar"></i></div>
+      <div class="obj" id="tObj" hidden></div>
     </div>
 
     <div class="blade">
@@ -273,12 +272,9 @@ input:focus-visible + .chip{outline:3px solid var(--green);outline-offset:2px}
       </div>
     </div>
 
-    <div class="keys" id="keysHelp">
-      <kbd>WASD</kbd>/<kbd>Arrows</kbd> move · <kbd>Space</kbd> strike · <kbd>Q</kbd> <kbd>E</kbd> blade − + · type <kbd>0–9</kbd> to set the blade<br>
-      <kbd>F</kbd> bow · hold <kbd>Shift</kbd> shield · <kbd>Z</kbd> <kbd>X</kbd> <kbd>C</kbd> items · <kbd>P</kbd> pause
-    </div>
   </div>
 </div>
+<div class="tip" id="tip" hidden></div>
 
 <script>
 (() => {
@@ -380,6 +376,11 @@ const STAGES = [
    floor:'#4b4766', floor2:'#45415e', wall:'#25223a', wall2:'#36325a', obst:'pillar', hazard:'#120f22', hazard2:'#2a2150', bg:'#141223'},
 ];
 
+const TRAIN = {name:'Training Grounds', monsters:['blob'], eqMode:'shared', boss:'trainer', treasure:null,
+  floor:'#cdbb8c', floor2:'#c5b383', wall:'#3b6a46', wall2:'#4f8a5a', obst:'bush', hazard:'#3d8fd6', hazard2:'#5aa8ee', bg:'#1f3a24'};
+const curStage = () => game.stage < 0 ? TRAIN : STAGES[game.stage];
+const LESSONS = ['Moving', 'Your blade', 'Monsters', 'Numbered slime', 'Shield', 'Bow and arrows', 'Items', 'Changing equations'];
+
 /* ---------- state ---------- */
 let game = null;        // run-wide data (saved)
 let dungeon = null;     // current stage map
@@ -392,6 +393,7 @@ let toast = null, tip = null;
 let W = 0, H = 0, S = 1, dpr = 1;
 let roomCache = null, roomDirty = true;
 let keypadOpen = false;
+let tut = {step: -1, used: {}}, tutPoint = null, cut = null;
 
 function newGameData(){
   const op = document.querySelector('input[name="op"]:checked').value;
@@ -400,7 +402,7 @@ function newGameData(){
     bow: false, shield: false, arrows: 0, items: {slow: 0, omni: 0, inv: 0}, charm: false,
     stats: {right: 0, wrong: 0, kills: 0, starsTotal: 0, time: 0}};
 }
-function save(){ if (game) store.set('nk-save', JSON.stringify(game)); }
+function save(){ if (game && game.stage >= 0) store.set('nk-save', JSON.stringify(game)); }
 function loadSave(){ try { const s = JSON.parse(store.get('nk-save') || 'null'); return s && typeof s.stage === 'number' ? s : null; } catch(e){ return null; } }
 
 /* ---------- dungeon generation ---------- */
@@ -455,6 +457,7 @@ function buildTiles(r){
     g[y + 1][x + 1] = c === 'o' ? 2 : c === '~' ? 3 : 0;
   }
   if (r.type === 'shop'){ for (let x = 3; x <= 9; x++) g[2][x] = 5; }
+  if (r.type === 'tut' && r.step === 5){ for (let x = 2; x <= RW - 3; x++) g[4][x] = 3; }
   for (const d of Object.keys(r.doors)) if (r.doors[d]){ const [dx, dy] = DOOR[d]; g[dy][dx] = 4; }
   r.tiles = g;
 }
@@ -470,14 +473,14 @@ function solidTile(tx, ty, flying, hero){
     if (!hero) return true;
     // outside the room: only passable straight through an open door
     if (room.locked) return true;
-    for (const d of Object.keys(room.doors)) if (room.doors[d]){
+    for (const d of Object.keys(room.doors)) if (room.doors[d] && !(d === 'N' && room.type === 'tut' && !room.tutDone)){
       const [dx, dy] = DOOR[d];
       if ((d === 'N' && ty < 0 && tx === dx) || (d === 'S' && ty >= RH && tx === dx) || (d === 'W' && tx < 0 && ty === dy) || (d === 'E' && tx >= RW && ty === dy)) return false;
     }
     return true;
   }
   if (t === 1 || t === 5) return true;
-  if (t === 4) return room.locked || !hero;
+  if (t === 4) return room.locked || !hero || (room.type === 'tut' && !room.tutDone && ty === 0);
   if (t === 2) return !flying;
   if (t === 3) return !flying;
   return false;
@@ -513,9 +516,11 @@ const MDEF = {
   bat:   {r:5, speed:52, fly:true,  hp:1, color:'#9a6bd6', dark:'#4f2f86'},
   knight:{r:6, speed:30, fly:false, hp:1, color:'#c9ccd8', dark:'#6b7088'},
   wisp:  {r:5, speed:26, fly:true,  hp:1, color:'#8ff3ff', dark:'#3d8fb0'},
+  dummy: {r:7, speed:0,  fly:false, hp:1, color:'#d9b77a', dark:'#7a5a32'},
+  statue:{r:8, speed:0,  fly:false, hp:99, color:'#9aa3bf', dark:'#5c6478'},
 };
 function spawnMonsters(){
-  const st = STAGES[game.stage];
+  const st = curStage();
   const count = [rnd(2,3), rnd(3,4), rnd(3,5)][game.stage];
   let eqs;
   if (st.eqMode === 'shared') eqs = [genProblem()];
@@ -536,12 +541,13 @@ function newEqFor(m){
 
 /* ---------- bosses ---------- */
 const BDEF = {
+  trainer: {name:'Training dummy', hp:1, r:10, cycle:3.4, color:'#d9b77a', dark:'#7a5a32'},
   slime: {name:'Slime King', hp:4, r:15, cycle:0, color:'#6fd14a', dark:'#2f7a22'},
   drake: {name:'Ember Drake', hp:5, r:15, cycle:3.4, color:'#ff7a3a', dark:'#9a2e12'},
   lich:  {name:'Shadow Lich', hp:6, r:14, cycle:2.8, color:'#b58cff', dark:'#4a2a86'},
 };
 function spawnBoss(){
-  const kind = STAGES[game.stage].boss, d = BDEF[kind];
+  const kind = curStage().boss, d = BDEF[kind];
   boss = {kind, name: d.name, x: WW/2, y: 56, hw: 10, hh: 10, r: d.r, hp: d.hp, maxHp: d.hp, eqs: [], idx: 0, cycleT: d.cycle, period: d.cycle,
     t: 0, hitCD: 0, flash: 0, act: 2, vx: 0, vy: 0, hopT: 0, phase: 0, intro: 1.6};
   bossEqs();
@@ -573,6 +579,8 @@ function enterRoom(r, fromDir){
     if (r.type === 'boss') spawnBoss();
   }
   if (r.type === 'shop' && !r.shop) makeShop(r);
+  if (r.type === 'tut') tutEnter(r);
+  playMusic(game.stage < 0 ? 'training' : (r.type === 'boss' && !r.cleared) ? 'boss' : 'dungeon');
   if (r.type === 'treasure' && r.cleared && r.chest && !r.chest.open) {}
   r.locked = false;
   roomDirty = true;
@@ -581,6 +589,7 @@ function enterRoom(r, fromDir){
   updateRoomName(); drawMinimap(); updateTarget(true);
 }
 function updateRoomName(){
+  if (room.type === 'tut'){ $('roomName').textContent = `Lesson ${room.step + 1} of ${LESSONS.length}`; return; }
   const n = {start:'Entrance', fight:'', treasure:'Treasure room', shop:'Shop', boss:'Boss lair'}[room.type];
   $('roomName').textContent = n;
 }
@@ -637,7 +646,7 @@ function setBlade(v){
 function bladeMatches(ans){ return player.omniT > 0 || player.blade === ans; }
 function hurtPlayer(dmg, fx, fy, kind){
   if (player.inv > 0 || player.invT > 0) return;
-  player.hp -= dmg; player.inv = 1.1;
+  player.hp -= dmg; if (game.stage < 0) player.hp = Math.max(1, player.hp); player.inv = 1.1;
   const a = Math.atan2(player.y - fy, player.x - fx);
   player.kx = Math.cos(a) * 160; player.ky = Math.sin(a) * 160;
   if (kind === 'slime') player.stuck = 1.4;
@@ -672,11 +681,13 @@ function wrongHit(x, y, eq){
   sparks(x, y);
 }
 function hitMonster(m, viaArrow){
+  if (m.type === 'statue'){ sfx.clang(); sparks(m.x, m.y); floatText(m.x, m.y - 14, 'Solid stone!', '#a3abc4', 8); return false; }
+  if (m.arrowOnly && !viaArrow){ sfx.clang(); sparks(m.x, m.y); floatText(m.x, m.y - 18, 'Use your bow for this one', '#ffcb47', 8); return false; }
   if (m.spawnT > 0) return false;
   if (bladeMatches(m.eq.answer)){
     correctHit(m.eq);
     m.hp--;
-    if (m.hp <= 0) killMonster(m);
+    if (m.hp <= 0){ if (viaArrow) tut.arrowKill = true; killMonster(m); }
     else { m.eq = newEqFor(m); m.flash = .4; m.stun = .6; floatText(m.x, m.y - 20, 'Armor cracked!', '#ffcb47', 8); updateTarget(true); }
     return true;
   }
@@ -702,12 +713,13 @@ function hitBoss(){
   }
 }
 function bossDefeated(){
+  if (boss.kind === 'trainer'){ burst(boss.x, boss.y, '#d9b77a', 30); burst(boss.x, boss.y, '#ffffff', 14); boss = null; sfx.win(); tut.trainerDown = true; updateTarget(true); return; }
   burst(boss.x, boss.y, '#ffffff', 40); burst(boss.x, boss.y, BDEF[boss.kind].color, 40);
   dropLoot(boss.x, boss.y, true);
   drops.push({kind:'container', x: boss.x, y: boss.y + 10, vx: 0, vy: 30, t: 0});
   const wasDrake = boss.kind === 'drake';
   boss = null; monsters = []; shots = [];
-  sfx.win();
+  sfx.win(); playMusic('dungeon');
   showToast('Boss defeated!', '#ffcb47', 2.5);
   room.portal = {x: WW/2, y: WH/2 + 8};
   if (wasDrake && !game.charm){
@@ -755,7 +767,7 @@ function useItem(id){
   if (id === 'slow'){ if (player.slowT > 0) return; player.slowT = 8; showToast('Time slowed!', '#6fb6ff', 1.2); }
   if (id === 'omni'){ if (player.omniT > 0) return; player.omniT = 8; showToast('Omni sword: any monster, any number!', '#ffcb47', 1.6); }
   if (id === 'inv'){ if (player.invT > 0) return; player.invT = 6; showToast('Invincible!', '#b58cff', 1.2); }
-  game.items[id]--; sfx.power(); updateHud(); save();
+  game.items[id]--; tut.used[id] = true; sfx.power(); updateHud(); save();
 }
 
 /* ---------- projectiles ---------- */
@@ -766,8 +778,8 @@ function projNum(){
   if (v < 0) v = base + rnd(1, 3);
   return v;
 }
-function enemyShot(kind, x, y, ang, speed){
-  shots.push({kind, friendly: false, x, y, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, r: kind === 'spark' ? 3.5 : 5, num: projNum(), life: 6});
+function enemyShot(kind, x, y, ang, speed, num){
+  shots.push({kind, friendly: false, x, y, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, r: kind === 'spark' ? 3.5 : 5, num: num ?? projNum(), life: 6});
 }
 function aimAt(x, y){ return Math.atan2(player.y - y, player.x - x); }
 
@@ -854,6 +866,13 @@ function update(dt){
     m.t += edt; m.flash = Math.max(0, m.flash - dt); m.stun = Math.max(0, m.stun - edt); m.spawnT = Math.max(0, m.spawnT - dt);
     if (m.spawnT > 0) continue;
     if (m.stun > 0) continue;
+    if (m.type === 'dummy') continue;
+    if (m.type === 'statue'){
+      m.shootFlash = Math.max(0, (m.shootFlash || 0) - edt);
+      m.shootT -= edt;
+      if (m.shootT <= 0){ m.shootT = m.rate; m.shootFlash = .3; enemyShot(m.shotKind, m.x, m.y + 4, aimAt(m.x, m.y), m.shotSpeed, m.numFn()); sfx.thud(); }
+      continue;
+    }
     const ax = player.x - m.x, ay = player.y - m.y, ad = Math.hypot(ax, ay) || 1;
     let vx = 0, vy = 0;
     if (m.type === 'blob'){
@@ -870,7 +889,8 @@ function update(dt){
       m.shootT -= edt;
       if (m.shootT <= 0){ m.shootT = rand(3, 4.5); enemyShot('spark', m.x, m.y, aimAt(m.x, m.y), 55); }
     }
-    if (moveEnt(m, vx * edt, vy * edt, d.fly) && m.type === 'blob') m.hopDir = null;
+    const ms = game.stage < 0 ? .55 : 1;
+    if (moveEnt(m, vx * edt * ms, vy * edt * ms, d.fly) && m.type === 'blob') m.hopDir = null;
     // contact
     if (Math.abs(m.x - player.x) < m.r + 4 && Math.abs(m.y - player.y) < m.r + 4){
       if (player.shielding){ const a = Math.atan2(m.y - player.y, m.x - player.x); m.x += Math.cos(a) * 6; m.y += Math.sin(a) * 6; m.stun = .3; }
@@ -895,9 +915,10 @@ function update(dt){
     } else if (Math.hypot(player.x - s.x, player.y - s.y) < s.r + 5){
       shots.splice(i, 1);
       if (player.blade === s.num){
-        game.stars++; game.stats.starsTotal++; updateHud();
+        game.stars++; game.stats.starsTotal++; updateHud(); tut.absorbs = (tut.absorbs || 0) + 1;
         floatText(player.x, player.y - 14, 'Soaked up ' + s.num + '! +1★', '#ffcb47', 8); sfx.absorb(); burst(s.x, s.y, '#ffcb47', 8);
       } else if (player.shielding || player.invT > 0){
+        if (player.shielding) tut.blocks = (tut.blocks || 0) + 1;
         floatText(player.x, player.y - 14, 'Blocked!', '#6fb6ff', 8); sfx.block(); burst(s.x, s.y, '#6fb6ff', 6);
       } else hurtPlayer(s.kind === 'flame' ? 2 : 1, s.x, s.y, s.kind);
     }
@@ -938,6 +959,7 @@ function update(dt){
   else if (room.type === 'start' && game.stage === 1) tip = 'Monsters here can carry different equations. Change your blade for each one.';
   else if (room.type === 'start' && game.stage === 2) tip = 'Every monster has its own equation now. Armored knights need two hits.';
   if (room.type === 'shop' && room.shop) for (const it of room.shop) if (!it.sold && Math.hypot(player.x - it.x, player.y - it.y) < 14) tip = `${it.name}: ${it.price} ★. Strike to buy.`;
+  if (room.type === 'tut') tutUpdate(dt); else { tutPoint = null; setTip(null); setObj(''); }
 }
 
 function updateBoss(edt, dt){
@@ -948,6 +970,7 @@ function updateBoss(edt, dt){
     b.cycleT -= edt;
     if (b.cycleT <= 0){ b.idx = (b.idx + 1) % b.eqs.length; b.cycleT = b.period; sfx.cycle(); updateTarget(true); }
   }
+  if (b.kind === 'trainer') return;
   b.act -= edt;
   const ang = aimAt(b.x, b.y);
   if (b.kind === 'slime'){
@@ -986,7 +1009,7 @@ function updateBoss(edt, dt){
 
 function openChest(){
   room.chest.open = true;
-  const id = STAGES[game.stage].treasure;
+  const id = curStage().treasure;
   grant(id); sfx.win();
   const msg = {bow:'You found a Bow and 10 arrows! Arrows carry your blade number.', shield:'You found a Shield! Hold it to block anything.', omni2:'You found 2 Omni swords!'}[id];
   showToast(msg, '#ffcb47', 4);
@@ -995,19 +1018,21 @@ function openChest(){
 }
 
 /* ---------- stage flow ---------- */
-function startStage(){
-  const st = STAGES[game.stage];
-  game.lv = clamp(game.baseLv + (game.harder ? game.stage : 0), 1, 5);
-  dungeon = genDungeon(game.stage);
+function startStage(landing){
+  const st = curStage();
+  game.lv = game.stage < 0 ? 1 : clamp(game.baseLv + (game.harder ? game.stage : 0), 1, 5);
+  dungeon = game.stage < 0 ? genTutorial() : genDungeon(game.stage);
   if (!player) player = newPlayer();
   player.hp = game.maxHp; player.x = WW/2; player.y = WH/2 + 24; player.dir = 'N';
-  player.slowT = player.omniT = player.invT = 0;
+  player.slowT = player.omniT = player.invT = 0; player.inv = 0;
   game.snapshot = JSON.stringify({stars: game.stars, arrows: game.arrows, items: game.items, maxHp: game.maxHp, bow: game.bow, shield: game.shield, charm: game.charm});
-  $('stageName').textContent = `Stage ${game.stage + 1}: ${st.name}`;
+  $('stageName').textContent = game.stage < 0 ? 'Training Grounds' : `Stage ${game.stage + 1}: ${st.name}`;
+  $('skipTut').hidden = game.stage >= 0;
   enterRoom(dungeon.rooms.get('0,0'), null);
   setBlade(player.blade);
   updateHud();
-  showToast(`Stage ${game.stage + 1}: ${st.name}`, '#ffcb47', 2.4);
+  if (landing) startCut('landing');
+  else showToast(game.stage < 0 ? 'Welcome to the Training Grounds!' : `Stage ${game.stage + 1}: ${st.name}`, '#ffcb47', 2.4);
   save();
 }
 function stageComplete(){
@@ -1015,13 +1040,14 @@ function stageComplete(){
   const last = game.stage >= STAGES.length - 1;
   const s = game.stats, acc = s.right + s.wrong ? Math.round(100 * s.right / (s.right + s.wrong)) : 100;
   if (last){
-    showMsg('Victory!', `You beat the ${STAGES[game.stage].name} and saved the realm.`, [['Equations solved', s.right], ['Accuracy', acc + '%'], ['Stars found', s.starsTotal]],
+    playMusic('flight');
+    showMsg('Victory!', `You beat the ${curStage().name} and saved the realm.`, [['Equations solved', s.right], ['Accuracy', acc + '%'], ['Stars found', s.starsTotal]],
       [['New quest', () => { store.set('nk-save', ''); toTitle(); }, true]]);
     store.set('nk-save', '');
   } else {
     game.stage++;
     save();
-    showMsg(`Stage ${game.stage} clear!`, `Next: ${STAGES[game.stage].name}.` + (game.harder && game.lv < 5 ? ' The math gets a little harder.' : ''), [['Equations solved', s.right], ['Accuracy', acc + '%'], ['Stars', game.stars]],
+    showMsg(`Stage ${game.stage} clear!`, `Next: ${curStage().name}.` + (game.harder && game.lv < 5 ? ' The math gets a little harder.' : ''), [['Equations solved', s.right], ['Accuracy', acc + '%'], ['Stars', game.stars]],
       [['Onward', () => { hideMsg(); startStage(); state = 'play'; }, true]]);
   }
 }
@@ -1041,9 +1067,9 @@ function showMsg(title, text, stats, btns){
   setTimeout(() => box.querySelector('button')?.focus(), 50);
 }
 function hideMsg(){ show(null); }
-function show(id){ ['titleScreen','howScreen','pauseScreen','msgScreen'].forEach(s => $(s).hidden = s !== id); }
+function show(id){ ['titleScreen','pauseScreen','msgScreen'].forEach(s => $(s).hidden = s !== id); }
 function toTitle(){
-  state = 'title'; show('titleScreen');
+  state = 'title'; cut = null; show('titleScreen'); setTip(null); playMusic(null);
   const sv = loadSave();
   $('contBtn').hidden = !sv;
   if (sv) $('contBtn').textContent = `Continue: Stage ${sv.stage + 1}`;
@@ -1072,15 +1098,17 @@ function updateTarget(force){
   if (boss){
     eq = bossEq(); label = boss.name + (boss.hp ? `: ${boss.hp} hits left` : '');
     if (boss.period){ timer = true; pct = boss.cycleT / boss.period; next = 'Next: ' + eqText(boss.eqs[(boss.idx + 1) % boss.eqs.length]); }
-  } else if (monsters.length){
+  } else if (monsters.some(m => m.type !== 'statue')){
+    const fighters = monsters.filter(m => m.type !== 'statue');
     let best = null, bd = 1e9;
-    for (const m of monsters){ const d = dist(m, player); if (d < bd){ bd = d; best = m; } }
+    for (const m of fighters){ const d = dist(m, player); if (d < bd){ bd = d; best = m; } }
     eq = best.eq;
-    const kinds = new Set(monsters.map(m => m.eq)).size;
-    label = kinds > 1 ? 'Nearest monster' : monsters.length > 1 ? 'Every monster here' : 'Monster';
+    const kinds = new Set(fighters.map(m => m.eq)).size;
+    label = best.type === 'dummy' ? 'Training dummy' : kinds > 1 ? 'Nearest monster' : fighters.length > 1 ? 'Every monster here' : 'Monster';
   } else if (room.type === 'shop') label = 'Shop: walk onto an item and strike to buy';
   else if (room.portal) label = 'Step into the portal';
   else if (room.cleared && room.type !== 'start') label = 'Room cleared';
+  if (room.type === 'tut' && !eq) label = `Lesson ${room.step + 1}: ${LESSONS[room.step]}`;
   const key = label + '|' + (eq ? eqText(eq) : '') + '|' + next + '|' + player.blade;
   if (timer){ $('tBar').style.width = (pct * 100).toFixed(1) + '%'; }
   $('tTimer').hidden = !timer;
@@ -1168,7 +1196,7 @@ if (document.fonts){ document.fonts.ready.then(() => { txtCache.clear(); eqImgCa
 
 /* ---------- drawing: room ---------- */
 function renderRoomCache(){
-  const st = STAGES[game.stage];
+  const st = curStage();
   if (!roomCache) roomCache = document.createElement('canvas');
   roomCache.width = Math.ceil(WW * S * dpr); roomCache.height = Math.ceil(WH * S * dpr);
   const g = roomCache.getContext('2d');
@@ -1213,7 +1241,7 @@ function renderRoomCache(){
     }
     if (t === 4){
       const vertical = y === 0 || y === RH - 1;
-      if (room.locked){
+      if (room.locked || (room.type === 'tut' && !room.tutDone && y === 0)){
         g.fillStyle = st.wall; g.fillRect(px, py, T, T);
         g.fillStyle = room.type === 'boss' ? '#c9a23a' : '#8b93a8';
         if (vertical) for (let i = 0; i < 4; i++) g.fillRect(px + 1.5 + i * 4, py, 2, T);
@@ -1236,11 +1264,11 @@ function renderRoomCache(){
 
 /* ---------- drawing: entities ---------- */
 function drawShadow(x, y, w){ ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x, y, w, w * .4, 0, 0, 6.3); ctx.fill(); }
-function drawPlayer(now){
+function drawPlayer(now, o){
   const p = player;
   if (p.inv > 0 && Math.floor(p.inv * 14) % 2 === 0) return;
   const x = p.x, y = p.y, bob = Math.sin(p.step) * .6;
-  drawShadow(x, y + 6, 6);
+  if (!(o && o.noShadow)) drawShadow(x, y + 6, 6);
   if (p.invT > 0){ ctx.strokeStyle = `hsl(${(now * 300) % 360},90%,65%)`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y - 1, 10, 0, 6.3); ctx.stroke(); }
   const [dx, dy] = DIRV[p.dir];
   // idle blade at the side (drawn behind when facing up)
@@ -1279,7 +1307,18 @@ function drawMonster(m, now){
   if (m.spawnT > 0){ ctx.globalAlpha = 1 - m.spawnT / .7; }
   const fl = m.flash > 0 && Math.floor(m.flash * 20) % 2 === 0;
   drawShadow(x, y + m.r, m.r * .9);
-  if (m.type === 'blob'){
+  if (m.type === 'dummy'){
+    ctx.fillStyle = '#7a5a32'; ctx.fillRect(x - 1, y - 2, 2, 10);
+    ctx.fillStyle = fl ? '#fff' : '#d9b77a'; ctx.beginPath(); ctx.ellipse(x, y - 1, 6, 7, 0, 0, 6.3); ctx.fill();
+    ctx.fillStyle = '#b8894a'; ctx.fillRect(x - 9, y - 2, 18, 2);
+    ctx.strokeStyle = '#d9480f'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y - 2, 3, 0, 6.3); ctx.stroke();
+    ctx.fillStyle = '#d9480f'; ctx.fillRect(x - .8, y - 2.8, 1.6, 1.6);
+  } else if (m.type === 'statue'){
+    ctx.fillStyle = '#5c6478'; ctx.fillRect(x - 8, y + 2, 16, 6);
+    ctx.fillStyle = fl ? '#fff' : '#9aa3bf'; ctx.beginPath(); ctx.arc(x, y - 2, 7, 0, 6.3); ctx.fill();
+    ctx.fillStyle = '#1b1d2a'; ctx.fillRect(x - 4, y - 4, 2.4, 2.4); ctx.fillRect(x + 1.6, y - 4, 2.4, 2.4);
+    ctx.fillStyle = m.shootFlash > 0 ? '#ffcb47' : '#1b1d2a'; ctx.beginPath(); ctx.arc(x, y + 1.5, 2.2, 0, 6.3); ctx.fill();
+  } else if (m.type === 'blob'){
     const sq = (m.t % 1.3) < .55 ? 1 + Math.sin((m.t % 1.3) / .55 * Math.PI) * .25 : 1;
     ctx.fillStyle = fl ? '#ffffff' : d.color;
     ctx.beginPath(); ctx.ellipse(x, y + 2 - (sq - 1) * 6, 7 / sq, 6 * sq, 0, Math.PI, 0); ctx.lineTo(x + 7 / sq, y + 3); ctx.lineTo(x - 7 / sq, y + 3); ctx.fill();
@@ -1333,6 +1372,11 @@ function drawBoss(now){
     ctx.fillStyle = '#ffd27a'; ctx.beginPath(); ctx.ellipse(x, y + 4, 5, 7, 0, 0, 6.3); ctx.fill();
     ctx.fillStyle = '#fff3b0'; ctx.fillRect(x - 4, y - 16, 2, 4); ctx.fillRect(x + 2, y - 16, 2, 4);
     ctx.fillStyle = '#1b1d2a'; ctx.fillRect(x - 3.5, y - 10, 2, 2); ctx.fillRect(x + 1.5, y - 10, 2, 2);
+  } else if (b.kind === 'trainer'){
+    ctx.fillStyle = '#7a5a32'; ctx.fillRect(x - 2, y - 2, 4, 18);
+    ctx.fillStyle = fl ? '#fff' : '#d9b77a'; ctx.beginPath(); ctx.ellipse(x, y - 2, 10, 12, 0, 0, 6.3); ctx.fill();
+    ctx.fillStyle = '#b8894a'; ctx.fillRect(x - 15, y - 4, 30, 3);
+    ctx.strokeStyle = '#d9480f'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y - 3, 5, 0, 6.3); ctx.stroke(); ctx.beginPath(); ctx.arc(x, y - 3, 2, 0, 6.3); ctx.stroke();
   } else {
     ctx.fillStyle = 'rgba(181,140,255,.2)'; ctx.beginPath(); ctx.arc(x, y, 20 + Math.sin(now * 3) * 2, 0, 6.3); ctx.fill();
     ctx.fillStyle = fl ? '#fff' : '#2a1f4a';
@@ -1423,6 +1467,7 @@ function render(dt){
   }
   if (room.type === 'start'){ const sx = WW/2, sy = WH/2 - 10; ctx.fillStyle = '#7d8598'; ctx.fillRect(sx - 6, sy - 6, 12, 10); ctx.fillStyle = '#5c6478'; ctx.fillRect(sx - 6, sy + 4, 12, 2); ctx.fillStyle = '#ffcb47'; ctx.fillRect(sx - 3, sy - 3, 6, 1.2); ctx.fillRect(sx - 3, sy, 4, 1.2); }
 
+  if (room.type === 'tut' && tut.marker && !room.tutDone){ const mk = tut.marker, pr = 8 + Math.sin(now * 4); ctx.fillStyle = 'rgba(255,203,71,.25)'; ctx.beginPath(); ctx.ellipse(mk.x, mk.y, pr + 3, (pr + 3) * .6, 0, 0, 6.3); ctx.fill(); ctx.strokeStyle = '#ffcb47'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(mk.x, mk.y, pr, pr * .6, 0, 0, 6.3); ctx.stroke(); }
   for (const d of drops) drawDrop(d, now);
   // y-sorted actors
   const actors = monsters.map(m => ({y: m.y, f: () => drawMonster(m, now)}));
@@ -1431,7 +1476,8 @@ function render(dt){
   actors.sort((a, b) => a.y - b.y).forEach(a => a.f());
   for (const s of shots) drawShot(s, now);
   // equation bubbles on top so they never hide
-  for (const m of monsters) if (m.spawnT <= 0) drawBubble(m.eq, m.x, m.y - m.r - 3);
+  for (const m of monsters) if (m.spawnT <= 0 && m.type !== 'statue') drawBubble(m.eq, m.x, m.y - m.r - 3);
+  if (tutPoint){ const by = tutPoint.y + Math.sin(now * 6) * 2; ctx.fillStyle = '#ffcb47'; ctx.strokeStyle = '#1b1d2a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(tutPoint.x - 5, by - 7); ctx.lineTo(tutPoint.x + 5, by - 7); ctx.lineTo(tutPoint.x, by); ctx.closePath(); ctx.fill(); ctx.stroke(); }
   for (const p of parts){ ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.c; ctx.fillRect(p.x - p.s/2, p.y - p.s/2, p.s, p.s); }
   ctx.globalAlpha = 1;
   for (const t of texts){ ctx.globalAlpha = Math.min(1, t.life / t.max * 2); drawText(t.text, t.x, t.y, t.size, t.color, '#1b1d2a', true); }
@@ -1447,6 +1493,381 @@ function render(dt){
   if (fade > 0){ ctx.fillStyle = `rgba(0,0,0,${fade})`; ctx.fillRect(0, 0, WW, WH); }
   ctx.restore();
 }
+/* ---------- tutorial: Training Grounds ---------- */
+function genTutorial(){
+  const key = (x, y) => x + ',' + y, rooms = new Map();
+  for (let i = 0; i < LESSONS.length; i++){
+    const r = mkRoom(0, -i, 'tut'); r.step = i;
+    if (i > 0){ r.doors.S = true; rooms.get(key(0, -(i - 1))).doors.N = true; }
+    rooms.set(key(0, -i), r);
+  }
+  return {rooms, key};
+}
+function tutEnter(r){
+  player.hp = game.maxHp; updateHud();
+  if (r.tutDone){ tut = {step: r.step, used: {}}; return; }
+  tut = {step: r.step, phase: 0, absorbs: 0, blocks: 0, used: {}, arrowKill: false, trainerDown: false, marker: null};
+  const add = (type, x, y, extra) => monsters.push(Object.assign({type, x, y, hw: 5, hh: 5, r: MDEF[type].r, hp: MDEF[type].hp, eq: genProblem(), vx: 0, vy: 0, t: 0, flash: 0, stun: 0, shootT: 2, spawnT: .4}, extra || {}));
+  const st = r.step;
+  if (st === 0) tut.marker = {x: WW/2, y: 44};
+  if (st === 1) add('dummy', WW/2, 56);
+  if (st === 2){ const eq = genProblem(); add('blob', 56, 52, {eq}); add('blob', 152, 52, {eq}); }
+  if (st === 3) add('statue', WW/2, 34, {rate: 2.8, shootT: 1.5, shotKind: 'slime', shotSpeed: 36, numFn: () => rnd(1, 9)});
+  if (st === 4){ game.shield = true; add('statue', WW/2, 34, {rate: 2.3, shootT: 1.5, shotKind: 'flame', shotSpeed: 44, numFn: () => rnd(11, 19)}); }
+  if (st === 5){ game.bow = true; game.arrows = Math.max(game.arrows, 10); add('dummy', WW/2, 38, {arrowOnly: true}); }
+  if (st === 6){ for (const k of ['slow', 'omni', 'inv']) game.items[k] = Math.max(1, game.items[k]); }
+  if (st === 7) spawnBoss();
+  updateHud(); updateTarget(true);
+}
+const touchUIActive = () => getComputedStyle($('touch')).display !== 'none';
+function tutUpdate(dt){
+  const t = touchUIActive(), K = k => `<kbd>${k}</kbd>`;
+  let obj = '', html = '', target = 'stage', point = null, done = false;
+  if (room.tutDone){
+    const last = room.step === LESSONS.length - 1;
+    setObj(last ? 'Training complete!' : 'Lesson complete! Head through the door at the top.');
+    tutPoint = last ? null : {x: WW/2, y: 26};
+    setTip(null);
+    return;
+  }
+  switch (tut.step){
+    case 0:
+      obj = 'Walk to the glowing circle.'; point = {x: tut.marker.x, y: tut.marker.y - 8};
+      html = t ? 'Drag the joystick to walk' : `Walk with ${K('W')}${K('A')}${K('S')}${K('D')} or the arrow keys`; target = t ? 'joy' : 'stage';
+      if (dist(player, tut.marker) < 10) done = true;
+      break;
+    case 1: {
+      const d = monsters.find(m => m.type === 'dummy');
+      if (!d){ done = true; break; }
+      point = {x: d.x, y: d.y - 26};
+      if (player.blade !== d.eq.answer){
+        obj = 'What number goes in the blank? Set your blade to it.';
+        html = t ? 'Tap <b>+</b> and <b>−</b> to change your blade, or tap the number to type it' : `Press ${K('E')} to go up and ${K('Q')} to go down, or just type the number`;
+        target = 'bladeBtn';
+      } else {
+        obj = 'Your blade fits! Walk up to the dummy and strike it.';
+        html = t ? 'Tap <b>Strike</b>' : `Press ${K('Space')} to strike`; target = t ? 'atkBtn' : 'stage';
+      }
+      break; }
+    case 2:
+      obj = 'These slimes share one equation, so one number beats both. Keep moving, they bump!';
+      html = 'Doors lock until every monster in the room is beaten'; target = 'stage';
+      if (!monsters.length) done = true;
+      break;
+    case 3: {
+      obj = `Slime hurts unless your blade shows its number. Soak up 2 slimes (${Math.min(2, tut.absorbs)} of 2).`;
+      html = 'Change your blade to the number on the slime before it reaches you'; target = 'bladeBtn';
+      const sh = shots.find(x => !x.friendly); if (sh) point = {x: sh.x, y: sh.y - 12};
+      if (tut.absorbs >= 2) done = true;
+      break; }
+    case 4:
+      obj = `Here's a shield to borrow. Block 2 flames with it (${Math.min(2, tut.blocks)} of 2).`;
+      html = t ? 'Press and hold <b>Shield</b>' : `Hold ${K('Shift')} to raise your shield`; target = t ? 'shieldBtn' : 'stage';
+      if (tut.blocks >= 2) done = true;
+      break;
+    case 5: {
+      const d = monsters.find(m => m.type === 'dummy');
+      if (!d){ done = true; break; }
+      point = {x: d.x, y: d.y - 26};
+      obj = 'Water is in the way. Arrows carry your blade number, so set it first, then shoot.';
+      html = t ? 'Face the dummy and tap <b>Bow</b>' : `Face the dummy and press ${K('F')} to shoot`; target = t ? 'bowBtn' : 'stage';
+      if (game.arrows < 3){ game.arrows = 10; updateHud(); }
+      break; }
+    case 6:
+      if (tut.phase === 0){
+        obj = 'Items help in a tough spot. Try slowing down time.';
+        html = t ? 'Tap <b>Time slow</b>' : `Press ${K('Z')} or click <b>Time slow</b>`; target = 'it-slow';
+        if (tut.used.slow){
+          tut.phase = 1;
+          const hard = OPS[game.op === 'mix' ? 'mul' : game.op].levels[4][1]();
+          monsters.push({type:'dummy', x: WW/2, y: 56, hw:5, hh:5, r:7, hp:1, eq: hard, vx:0, vy:0, t:0, flash:0, stun:0, shootT:9, spawnT:.4});
+          updateTarget(true);
+        }
+      } else if (tut.phase === 1){
+        const d = monsters.find(m => m.type === 'dummy');
+        if (!d){ tut.phase = 2; break; }
+        point = {x: d.x, y: d.y - 26};
+        obj = 'A tough equation! The Omni sword beats any equation for a few seconds.';
+        if (player.omniT > 0){ html = t ? 'Now tap <b>Strike</b>' : `Now press ${K('Space')} to strike`; target = t ? 'atkBtn' : 'stage'; }
+        else { html = t ? 'Tap <b>Omni sword</b>' : `Press ${K('X')} or click <b>Omni sword</b>`; target = 'it-omni'; }
+      } else {
+        obj = 'Last one. Invincible keeps you safe from everything for a few seconds.';
+        html = t ? 'Tap <b>Invincible</b>' : `Press ${K('C')} or click <b>Invincible</b>`; target = 'it-inv';
+        if (tut.used.inv) done = true;
+      }
+      break;
+    case 7:
+      obj = 'Bosses switch equations. Set your blade for one of them, then strike when it comes around.';
+      html = 'Watch the timer and the "Next" equation'; target = 'target';
+      if (boss) point = {x: boss.x, y: boss.y - 48};
+      if (tut.trainerDown) done = true;
+      break;
+  }
+  setObj(obj); tutPoint = point;
+  if (done){ tutComplete(); setTip(null); return; }
+  setTip(html, target);
+}
+function tutComplete(){
+  room.tutDone = true; room.cleared = true; room.locked = false; roomDirty = true;
+  for (const m of monsters) if (m.type === 'statue') burst(m.x, m.y, '#9aa3bf', 14);
+  monsters = monsters.filter(m => m.type !== 'statue'); shots = shots.filter(x => x.friendly);
+  sfx.open();
+  if (room.step === LESSONS.length - 1){
+    showToast(touchUIActive() ? 'Training complete!' : 'Training complete! Press P any time to pause.', '#5fe08a', 2.2);
+    setTimeout(() => { if (game && game.stage < 0 && state === 'play') startCut('pickup'); }, 1800);
+  } else showToast('Nice work!', '#5fe08a', 1.4);
+  updateTarget(true);
+}
+function endTutorial(){
+  setTip(null); tutPoint = null; cut = null;
+  Object.assign(game, {stage: 0, bow: false, shield: false, arrows: 0, items: {slow: 0, omni: 0, inv: 0}});
+  state = 'play';
+  startStage(true);
+}
+
+function setObj(text){ const el = $('tObj'); if (el.textContent !== text) el.textContent = text; el.hidden = !text; }
+
+/* ---------- tooltips that point at the real controls ---------- */
+let tipKey = '';
+function setTip(html, target){
+  const el = $('tip');
+  if (!html || state !== 'play'){ if (!el.hidden) el.hidden = true; tipKey = ''; return; }
+  let tEl = $(target);
+  if (!tEl || !tEl.getClientRects().length){ tEl = stageEl; target = 'stage'; }
+  const key = html + '|' + target;
+  if (key !== tipKey){ el.innerHTML = html; tipKey = key; }
+  el.hidden = false;
+  const r = tEl.getBoundingClientRect(), tw = el.offsetWidth, th = el.offsetHeight;
+  let top, cls;
+  if (target === 'stage'){ top = r.top + 10; cls = 'inside'; }
+  else if (target === 'bladeBtn' && r.bottom + th + 18 < innerHeight){ top = r.bottom + 12; cls = 'below'; }
+  else if (r.top > th + 18){ top = r.top - th - 12; cls = 'above'; }
+  else { top = r.bottom + 12; cls = 'below'; }
+  const left = clamp(r.left + r.width / 2 - tw / 2, 8, innerWidth - tw - 8);
+  el.className = 'tip ' + cls;
+  el.style.transform = '';
+  el.style.left = left + 'px'; el.style.top = top + 'px';
+  el.style.setProperty('--ax', clamp(r.left + r.width / 2 - left, 14, tw - 14) + 'px');
+}
+
+/* ---------- cutscenes ---------- */
+const CUT_LEN = {pickup: 5.2, flight: 4.6, landing: 4.4};
+function startCut(kind){
+  setTip(null); tutPoint = null;
+  for (const k in keys) keys[k] = false; joy.x = joy.y = 0;
+  cut = {kind, t: 0, dur: CUT_LEN[kind]};
+  if (kind === 'pickup'){ cut.px = player.x; cut.py = player.y; }
+  if (kind === 'landing'){ player.x = WW/2; player.y = 118; player.dir = 'S'; }
+  state = 'cut'; parts = []; shots = [];
+  player.slowT = player.omniT = player.invT = 0; updateCooldowns(); updateHud();
+  playMusic('flight');
+}
+function endCut(kind){
+  cut = null;
+  if (kind === 'pickup'){ startCut('flight'); return; }
+  if (kind === 'flight'){ endTutorial(); return; }
+  player.x = WW/2; player.y = 118; player.dir = 'S';
+  state = 'play'; playMusic('dungeon');
+  showToast(`Stage ${game.stage + 1}: ${curStage().name}`, '#ffcb47', 2.4);
+}
+function skipCut(){
+  if (!cut) return;
+  if (cut.kind === 'landing') endCut('landing');
+  else endTutorial();
+}
+function updateCut(dt){
+  const c = cut; c.t += dt; const t = c.t;
+  const once = (k, at, fn) => { if (t >= at && !c[k]){ c[k] = true; fn(); } };
+  if (c.kind === 'pickup'){
+    once('a', .2, () => { shake(.4); sfx.roar(); });
+    once('b', 2.6, () => { sfx.grab(); burst(c.px, c.py, '#ffffff', 10); });
+    once('c', 2.8, () => sfx.whoosh());
+  } else if (c.kind === 'flight'){
+    once('a', .7, () => sfx.roar());
+  } else {
+    once('a', 2.0, () => { shake(.35); sfx.thud(); burst(WW/2 - 12, 96, '#e8dcc0', 14); burst(WW/2 + 12, 96, '#e8dcc0', 14); });
+    once('b', 2.4, () => sfx.swing());
+    once('c', 3.0, () => sfx.roar());
+  }
+  for (let i = parts.length - 1; i >= 0; i--){ const p = parts[i]; p.life -= dt; if (p.life <= 0){ parts.splice(i, 1); continue; } p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .92; p.vy *= .92; }
+  shakeT = Math.max(0, shakeT - dt);
+  if (t >= c.dur) endCut(c.kind);
+}
+function drawSkyDragon(x, y, now, o){
+  o = o || {};
+  const f = Math.sin(now * 8) * 8;
+  ctx.fillStyle = '#23756f';
+  for (const sd of [-1, 1]){
+    ctx.beginPath(); ctx.moveTo(x + sd * 6, y - 4); ctx.quadraticCurveTo(x + sd * 26, y - 26 - f, x + sd * 44, y - 14 - f);
+    ctx.lineTo(x + sd * 34, y - 4 - f * .4); ctx.lineTo(x + sd * 26, y + 2); ctx.lineTo(x + sd * 18, y - 1); ctx.lineTo(x + sd * 10, y + 6); ctx.closePath(); ctx.fill();
+  }
+  ctx.strokeStyle = '#4fd8b4'; ctx.lineWidth = 1;
+  for (const sd of [-1, 1]){ ctx.beginPath(); ctx.moveTo(x + sd * 7, y - 3); ctx.lineTo(x + sd * 30, y - 16 - f * .8); ctx.stroke(); }
+  ctx.strokeStyle = '#3fbf9f'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x, y + 10); ctx.quadraticCurveTo(x + 8, y + 22, x + Math.sin(now * 3) * 7, y + 30); ctx.stroke(); ctx.lineCap = 'butt';
+  ctx.fillStyle = '#3fbf9f'; ctx.beginPath(); ctx.ellipse(x, y + 2, 10, 14, 0, 0, 6.3); ctx.fill();
+  ctx.fillStyle = '#ffe08a'; ctx.beginPath(); ctx.ellipse(x, y + 5, 6, 9, 0, 0, 6.3); ctx.fill();
+  ctx.fillStyle = '#3fbf9f'; ctx.beginPath(); ctx.ellipse(x, y - 14, 8, 7, 0, 0, 6.3); ctx.fill();
+  ctx.fillStyle = '#5fe3c0'; ctx.beginPath(); ctx.ellipse(x, y - 10, 5, 3.5, 0, 0, 6.3); ctx.fill();
+  ctx.fillStyle = '#fff3d1';
+  for (const sd of [-1, 1]){ ctx.beginPath(); ctx.moveTo(x + sd * 3, y - 19); ctx.lineTo(x + sd * 7, y - 27); ctx.lineTo(x + sd * 6, y - 18); ctx.closePath(); ctx.fill(); }
+  ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x - 3.5, y - 15, 2.3, 0, 6.3); ctx.arc(x + 3.5, y - 15, 2.3, 0, 6.3); ctx.fill();
+  ctx.fillStyle = '#1b1d2a'; ctx.beginPath(); ctx.arc(x - 3.3, y - 14.6, 1.2, 0, 6.3); ctx.arc(x + 3.7, y - 14.6, 1.2, 0, 6.3); ctx.fill();
+  ctx.fillStyle = '#ff9ecb'; ctx.fillRect(x - 6.5, y - 12, 2, 1); ctx.fillRect(x + 4.5, y - 12, 2, 1);
+  if (o.rider){ const sx = player.x, sy = player.y, sdir = player.dir; player.x = x; player.y = y + 1; player.dir = 'N'; drawPlayer(now, {noShadow: true}); player.x = sx; player.y = sy; player.dir = sdir; }
+  if (o.carry){ ctx.fillStyle = '#ffe08a'; for (const sd of [-1, 1]){ ctx.fillRect(x + sd * 6 - 1, y + 13, 2, 7); ctx.fillRect(x + sd * 6 - 2, y + 19, 4, 1.5); } }
+}
+function renderCut(){
+  const c = cut, t = c.t, now = performance.now() / 1000;
+  const E = v => { v = clamp(v, 0, 1); return v * v * (3 - 2 * v); };
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+  ctx.save();
+  if (shakeT > 0) ctx.translate(rand(-2, 2) * S, rand(-2, 2) * S);
+  let caption = '', fadeA = 0;
+  player.inv = 0; player.swing = 0; player.invT = 0;
+  if (c.kind === 'flight'){
+    ctx.scale(S, S);
+    const g = ctx.createLinearGradient(0, 0, 0, WH); g.addColorStop(0, '#5fb4ff'); g.addColorStop(1, '#d6efff');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, WW, WH);
+    for (let i = 0; i < 6; i++){ const x = ((i * 47 - t * 60) % (WW + 60) + WW + 60) % (WW + 60) - 30; ctx.fillStyle = i % 2 ? '#7cc96a' : '#5fae4f'; ctx.fillRect(x, WH - 34, 50, 34); }
+    ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(0, WH - 36, WW, 3);
+    for (let i = 0; i < 9; i++){
+      const sp = 70 + (i % 3) * 50, x = ((i * 61 - t * sp) % (WW + 80) + WW + 80) % (WW + 80) - 40, y = 18 + (i * 37) % 110;
+      ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.beginPath(); ctx.ellipse(x, y, 16 + (i % 3) * 6, 6, 0, 0, 6.3); ctx.ellipse(x + 9, y - 4, 9, 6, 0, 0, 6.3); ctx.fill();
+    }
+    drawSkyDragon(WW/2 + Math.sin(t * .9) * 18, 84 + Math.sin(t * 2.2) * 6, now, {rider: true});
+    caption = 'Off to the ' + STAGES[0].name + '!';
+    if (t < .5) fadeA = 1 - t / .5;
+    if (t > c.dur - .7) fadeA = (t - (c.dur - .7)) / .7;
+  } else {
+    if (roomDirty) renderRoomCache();
+    ctx.drawImage(roomCache, 0, 0, WW * S, WH * S);
+    ctx.scale(S, S);
+    if (c.kind === 'pickup'){
+      const dx = c.px; let dy, carried = false;
+      if (t < .8) dy = -70;
+      else if (t < 2.2) dy = -50 + (c.py - 26 + 50) * E((t - .8) / 1.4);
+      else if (t < 2.6) dy = c.py - 26 + Math.sin(t * 8);
+      else { dy = (c.py - 26) + (-100 - (c.py - 26)) * E((t - 2.6) / 1.6); carried = true; }
+      const h = clamp((c.py - dy) / 130, 0, 1), grow = Math.min(1, t / .8 + .2);
+      ctx.fillStyle = `rgba(0,0,0,${.35 - h * .2})`; ctx.beginPath(); ctx.ellipse(dx, c.py + 8, 30 * (1 - h * .5) * grow, 8 * (1 - h * .5) * grow, 0, 0, 6.3); ctx.fill();
+      if (carried){ player.x = dx; player.y = dy + 24; player.dir = 'S'; drawPlayer(now, {noShadow: true}); }
+      else { player.x = c.px; player.y = c.py; if (t > 1) player.dir = 'N'; drawPlayer(now); }
+      drawSkyDragon(dx, dy, now, {carry: carried});
+      caption = t < 2.6 ? 'A friendly dragon swoops down!' : 'Hold on tight!';
+      if (t > 4.2) fadeA = (t - 4.2) / 1;
+    } else {
+      let dx = WW/2, dy;
+      if (t < 2) dy = -60 + 140 * E(t / 2);
+      else if (t < 2.9) dy = 80;
+      else { dy = 80 - 160 * E((t - 2.9) / 1.5); dx = WW/2 + (t - 2.9) * 40; }
+      const h = clamp((80 - dy) / 140, 0, 1);
+      ctx.fillStyle = `rgba(0,0,0,${.32 - h * .2})`; ctx.beginPath(); ctx.ellipse(dx, 96, 30 * (1 - h * .5), 8 * (1 - h * .5), 0, 0, 6.3); ctx.fill();
+      const hop = clamp((t - 2.4) / .5, 0, 1);
+      if (t >= 2.4){ player.x = WW/2; player.y = 75 + (118 - 75) * hop - Math.sin(hop * Math.PI) * 18; player.dir = 'S'; }
+      if (t >= 2.4 && hop >= 1) drawPlayer(now);
+      drawSkyDragon(dx, dy, now, {rider: t < 2.4});
+      if (t >= 2.4 && hop < 1) drawPlayer(now, {noShadow: true});
+      caption = t < 2.4 ? 'Coming in for a landing...' : `Stage ${game.stage + 1}: ${curStage().name}`;
+      if (t < .4) fadeA = 1 - t / .4;
+    }
+  }
+  for (const p of parts){ ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.c; ctx.fillRect(p.x - p.s/2, p.y - p.s/2, p.s, p.s); }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+  ctx.save(); ctx.scale(S, S);
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, WW, 13); ctx.fillRect(0, WH - 13, WW, 13);
+  if (caption) drawText(caption, WW/2, WH - 25, 8, '#ffffff', '#10131c', true);
+  drawText(touchUIActive() ? 'Tap to skip' : 'Space to skip', WW - 28, 6.5, 4.6, '#a3abc4');
+  if (fadeA > 0){ ctx.fillStyle = `rgba(0,0,0,${clamp(fadeA, 0, 1)})`; ctx.fillRect(0, 0, WW, WH); }
+  ctx.restore();
+}
+
+/* ---------- music: a small chiptune sequencer ---------- */
+const SONGS = {
+  training: {bpm: 112, wave: 'square', vol: .035,
+    lead: 'C5 . E5 G5 A5 . G5 E5 F5 . A5 . G5 - - . E5 . G5 C6 B5 . A5 G5 F5 E5 D5 F5 E5 - C5 .',
+    bass: 'C3 . C3 . F2 . F2 . F2 . F2 . C3 . G2 . C3 . C3 . A2 . A2 . F2 . G2 . C3 . G2 .',
+    drums: 'k . h . s . h . k k h . s . h h'},
+  dungeon: {bpm: 124, wave: 'square', vol: .028,
+    lead: 'A4 . C5 . E5 . D5 C5 B4 . G4 . A4 - - . A4 . C5 . E5 . G5 F5 E5 . D5 . E5 - - .',
+    bass: 'A2 . A2 E2 A2 . A2 E2 G2 . G2 D2 G2 . G2 D2 F2 . F2 C3 F2 . F2 C3 E2 . E2 B2 E2 . G#2 E2',
+    drums: 'k . h . s . h h k . h k s . h .'},
+  boss: {bpm: 150, wave: 'square', vol: .032,
+    lead: 'D5 . D5 F5 A5 . G5 F5 E5 . E5 G5 Bb5 . A5 G5 F5 . F5 A5 D6 . C6 Bb5 A5 . G5 F5 E5 . C#5 .',
+    bass: 'D2 D3 D2 D3 D2 D3 D2 D3 C2 C3 C2 C3 C2 C3 C2 C3 Bb1 Bb2 Bb1 Bb2 Bb1 Bb2 Bb1 Bb2 A1 A2 A1 A2 A1 A2 C#2 E2',
+    drums: 'k h s h k k s h'},
+  flight: {bpm: 96, wave: 'triangle', vol: .09,
+    lead: 'G4 - C5 - D5 - E5 - - - D5 C5 D5 - G4 - A4 - C5 - D5 - F5 - E5 - - - - - - -',
+    bass: 'C3 - - - G2 - - - A2 - - - E2 - - - F2 - - - C3 - - - G2 - - - G2 - - -',
+    drums: 'k . . . s . . . k . k . s . . h'},
+};
+for (const sg of Object.values(SONGS)){ sg.L = sg.lead.split(/\s+/); sg.B = sg.bass.split(/\s+/); sg.D = sg.drums.split(/\s+/); }
+function noteFreq(n){
+  const m = /^([A-G])(#|b)?(\d)$/.exec(n);
+  const semi = {C:0, D:2, E:4, F:5, G:7, A:9, B:11}[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);
+  return 440 * Math.pow(2, (12 * (+m[3] + 1) + semi - 69) / 12);
+}
+let musicOn = store.get('nk-music') !== 'off';
+const music = {cur: null, step: 0, next: 0, timer: 0, bus: null, noise: null};
+function musicBus(){
+  if (!music.bus){
+    music.bus = ac.createGain(); music.bus.gain.value = musicOn ? .5 : 0; music.bus.connect(ac.destination);
+    const len = Math.floor(ac.sampleRate * .3), b = ac.createBuffer(1, len, ac.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    music.noise = b;
+  }
+  return music.bus;
+}
+function playMusic(name){
+  if (music.cur === name) return;
+  music.cur = name; music.step = 0;
+  if (!ac || !name) return;
+  musicBus(); music.next = ac.currentTime + .08;
+  if (!music.timer) music.timer = setInterval(scheduleMusic, 30);
+}
+function holdLen(arr, i){ let n = 1; while (n < arr.length && arr[(i + n) % arr.length] === '-') n++; return n; }
+function mVoice(f, t, dur, type, vol){
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .01); g.gain.setValueAtTime(vol, t + dur * .7); g.gain.exponentialRampToValueAtTime(.0005, t + dur);
+  o.connect(g).connect(music.bus); o.start(t); o.stop(t + dur + .02);
+}
+function mDrum(k, t){
+  if (k === 'k'){
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(45, t + .12);
+    g.gain.setValueAtTime(.45, t); g.gain.exponentialRampToValueAtTime(.001, t + .14);
+    o.connect(g).connect(music.bus); o.start(t); o.stop(t + .16); return;
+  }
+  const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain(), d = k === 'h' ? .04 : .12;
+  src.buffer = music.noise; f.type = k === 'h' ? 'highpass' : 'bandpass'; f.frequency.value = k === 'h' ? 7000 : 1800;
+  g.gain.setValueAtTime(k === 'h' ? .1 : .2, t); g.gain.exponentialRampToValueAtTime(.001, t + d);
+  src.connect(f).connect(g).connect(music.bus); src.start(t); src.stop(t + d + .02);
+}
+function scheduleMusic(){
+  if (!ac || !music.cur) return;
+  const sg = SONGS[music.cur], spb = 60 / sg.bpm / 2;
+  if (music.next < ac.currentTime - .25) music.next = ac.currentTime + .05;
+  while (music.next < ac.currentTime + .15){
+    const t = music.next, i = music.step;
+    if (state !== 'paused' && musicOn){
+      const li = i % sg.L.length, l = sg.L[li];
+      if (l !== '.' && l !== '-') mVoice(noteFreq(l), t, spb * holdLen(sg.L, li) * .95, sg.wave, sg.vol);
+      const bi = i % sg.B.length, bn = sg.B[bi];
+      if (bn !== '.' && bn !== '-') mVoice(noteFreq(bn), t, spb * holdLen(sg.B, bi) * .9, 'triangle', .09);
+      const dk = sg.D[i % sg.D.length]; if (dk !== '.') mDrum(dk, t);
+    }
+    music.next += spb; music.step++;
+  }
+}
+function setMusic(on){
+  musicOn = on; store.set('nk-music', on ? 'on' : 'off');
+  $('musicBtn').textContent = on ? '♪ Music on' : '♪ Music off';
+  $('musicBtn').setAttribute('aria-pressed', String(on));
+  if (music.bus && ac) music.bus.gain.setTargetAtTime(on ? .5 : 0, ac.currentTime, .05);
+}
+
 function wrapBanner(text, x, y, color, panel){
   // split into lines that fit the room width
   const words = text.split(' '), lines = []; let cur = '';
@@ -1492,6 +1913,9 @@ const sfx = {
   fire(){ tone(200, 600, .25, 'sawtooth', .04); },
   warp(){ tone(1200, 300, .3, 'sine', .05); },
   cycle(){ tone(880, 880, .05, 'triangle', .03); },
+  roar(){ tone(220, 110, .7, 'sawtooth', .06); tone(330, 160, .6, 'square', .025, .05); },
+  grab(){ tone(500, 900, .12, 'triangle', .06); },
+  whoosh(){ tone(200, 900, .5, 'sine', .05); },
   win(){ [523, 659, 784, 1046].forEach((f, i) => tone(f, f * 1.01, .16, 'triangle', .07, i * .11)); },
   lose(){ [392, 330, 262].forEach((f, i) => tone(f, f, .25, 'triangle', .07, i * .2)); },
 };
@@ -1517,7 +1941,8 @@ function frame(now){
     if (fadeDir < 0 && fade <= 0){ fade = 0; fadeDir = 0; }
   }
   if (state === 'play' && fadeDir <= 0) update(dt);
-  render(dt);
+  if (state === 'cut' && cut) updateCut(dt);
+  if (state === 'cut' && cut) renderCut(); else render(dt);
   hudT -= dt;
   if (hudT <= 0 && state === 'play'){ hudT = .1; updateTarget(); if (game.charm || player.slowT || player.omniT || player.invT) updateHud(); updateCooldowns(); }
   requestAnimationFrame(frame);
@@ -1532,6 +1957,7 @@ function updateCooldowns(){
 /* ---------- input ---------- */
 function startPlay(){ initAudio(); state = 'play'; show(null); }
 addEventListener('keydown', e => {
+  if (state === 'cut'){ if (['Space','Enter','Escape'].includes(e.code)){ e.preventDefault(); skipCut(); } return; }
   if (state === 'play'){
     if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight'].includes(e.code)) e.preventDefault();
     keys[e.code] = true;
@@ -1558,7 +1984,7 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; joy.x = joy.y = 0; pause(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
-function pause(){ if (state !== 'play') return; state = 'paused'; show('pauseScreen'); }
+function pause(){ if (state !== 'play') return; state = 'paused'; setTip(null); show('pauseScreen'); }
 function resume(){ if (state !== 'paused') return; state = 'play'; show(null); last = performance.now(); }
 
 // blade buttons: tap or hold to repeat
@@ -1608,7 +2034,7 @@ $('it-inv').addEventListener('click', () => useItem('inv'));
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end); el.addEventListener('lostpointercapture', end);
 })();
 // action buttons
-$('atkBtn').addEventListener('pointerdown', e => { e.preventDefault(); swing(); $('atkBtn').classList.add('held'); setTimeout(() => $('atkBtn').classList.remove('held'), 120); });
+$('atkBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (state === 'cut'){ skipCut(); return; } swing(); $('atkBtn').classList.add('held'); setTimeout(() => $('atkBtn').classList.remove('held'), 120); });
 $('bowBtn').addEventListener('pointerdown', e => { e.preventDefault(); shootArrow(); });
 (function(){
   const b = $('shieldBtn');
@@ -1630,10 +2056,14 @@ function lvDesc(){
 }
 document.querySelectorAll('#titleScreen input').forEach(el => el.addEventListener('change', lvDesc));
 lvDesc();
-$('newBtn').onclick = () => { game = newGameData(); player = null; startStage(); startPlay(); };
-$('contBtn').onclick = () => { const sv = loadSave(); if (!sv) return; game = sv; player = null; startStage(); startPlay(); };
-$('howBtn').onclick = () => show('howScreen');
-$('howBack').onclick = () => show('titleScreen');
+function begin(g, landing){ initAudio(); game = g; player = null; show(null); state = 'play'; startStage(landing); }
+$('newBtn').onclick = () => { const g = newGameData(); g.stage = -1; begin(g, false); };
+$('skipBtn').onclick = () => begin(newGameData(), true);
+$('contBtn').onclick = () => { const sv = loadSave(); if (sv) begin(sv, false); };
+$('skipTut').onclick = () => { if (state === 'play' && game.stage < 0) endTutorial(); };
+$('musicBtn').onclick = () => setMusic(!musicOn);
+cv.addEventListener('pointerdown', () => { if (state === 'cut') skipCut(); });
+setMusic(musicOn);
 $('resumeBtn').onclick = resume;
 $('quitBtn').onclick = () => { save(); toTitle(); };
 
