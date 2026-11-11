@@ -10,6 +10,7 @@ assets/                        screenshots used on the homepage cards
 games/number-blasters/index.html
 games/number-rally/index.html
 games/number-knight/index.html
+games/loop-lab/                music maker; index.html plus files that let it install on phones and work offline
 ```
 
 Each game is one self-contained HTML file. The site is static, so GitHub Pages serves it as-is with no build step.

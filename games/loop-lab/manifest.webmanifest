@@ -1,0 +1,15 @@
+{
+  "name": "Loop Lab",
+  "short_name": "Loop Lab",
+  "description": "Make beats, play tunes, and stack them into songs.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#FFF7E8",
+  "theme_color": "#FFF7E8",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+  ]
+}
