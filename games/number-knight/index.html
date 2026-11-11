@@ -200,6 +200,7 @@ input:focus-visible + .chip{outline:3px solid var(--green);outline-offset:2px}
   padding:14px clamp(10px, 3vw, 20px) 16px;text-align:center;color:#fff3d6;text-shadow:0 1px 0 #2b3043;animation:runein .35s ease-out}
 .rune h3{margin:0 0 8px;font-family:var(--title);font-weight:700;color:var(--gold);font-size:clamp(16px, 4.6vw, 22px);line-height:1.1}
 .rune .verse{margin:0;font-size:clamp(10.5px, calc(var(--rs, 400px) * .031), 16px);line-height:1.45;font-style:italic}
+.rune .verse + .verse{margin-top:10px}
 .rune .prophecy{display:block;margin:9px 0 5px;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
 @keyframes runein{from{opacity:0;transform:translate(-50%,-46%)}to{opacity:1;transform:translate(-50%,-50%)}}
 @media (prefers-reduced-motion: reduce){ .rune{animation:none} }
@@ -292,7 +293,6 @@ No strength alone could break the cursed horde;<br>
 Each foe held out a riddle with a hole.<br>
 But when the missing number filled his sword,<br>
 The riddle closed; the dark lost all its hold.</p>
-        <span class="prophecy">The prophecy</span>
         <p class="verse">A knight shall come to take the hero's place.<br>
 Her dragon's wings shall bear her through the sky.<br>
 Through Glade and Cave and Keep her blade shall face<br>
