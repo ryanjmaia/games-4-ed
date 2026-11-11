@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+/* page basics (these used to come from the Claude artifact wrapper) */
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;font-size:14px;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+img{max-width:100%}
+[hidden]{display:none!important}
+.home-link{display:inline-block;margin-top:4px;color:inherit;opacity:.75;font-size:13px;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.home-link:hover{opacity:1}
+</style>
+<title>Number Blasters</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: one arcade-cabinet column. Problem marquee on top, playfield fills the middle, touch pad at the foot. Single deliberate night-sky look. */
+:root{
+  --deep:#08061f;
+  --night:#120d38;
+  --line:#2e2670;
+  --ink:#f4f0ff;
+  --muted:#a9a1da;
+  --amber:#ffc23d;
+  --amber-dark:#b9831a;
+  --mint:#4ce6c6;
+  --rose:#ff6f8e;
+  --display:'Bungee', Impact, 'Arial Black', sans-serif;
+  --body:'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  background:var(--deep);color:var(--ink);font-family:var(--body);font-size:15px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-block:12px;
+  display:flex;justify-content:center;
+  -webkit-user-select:none;user-select:none;
+}
+.cab{width:100%;max-width:540px;height:100%;min-height:600px;display:flex;flex-direction:column;gap:10px}
+.hud{display:flex;align-items:center;justify-content:space-between;gap:10px;font-variant-numeric:tabular-nums}
+.stat{display:flex;flex-direction:column;gap:2px;min-width:0}
+.label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.val{font-family:var(--display);font-size:20px;line-height:1}
+.lvl{flex:1}
+.lvl .label,.lvl .val{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lvl .val{font-size:14px;color:var(--amber)}
+.lives{font-size:20px;letter-spacing:2px;color:var(--rose);line-height:1}
+.lives .gone{color:var(--line)}
+.btns{display:flex;gap:6px}
+.icon-btn{
+  font-family:var(--body);font-weight:700;font-size:13px;color:var(--ink);
+  background:var(--night);border:2px solid var(--line);border-radius:10px;padding:7px 10px;cursor:pointer;
+}
+.icon-btn:hover{border-color:var(--muted)}
+button:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+
+.marquee{
+  background:var(--night);border:2px solid var(--line);border-radius:14px;
+  padding:10px 14px 12px;display:flex;flex-direction:column;align-items:center;gap:4px;
+  transition:border-color .2s;
+}
+.marquee.good{border-color:var(--mint)}
+.marquee.bad{border-color:var(--rose);animation:shake .3s}
+.problem{font-family:var(--display);font-size:clamp(30px, 9vw, 46px);line-height:1.1;display:flex;align-items:center;gap:.28em;flex-wrap:wrap;justify-content:center;font-variant-numeric:tabular-nums}
+.problem .op{color:var(--muted)}
+.blank{
+  display:inline-flex;align-items:center;justify-content:center;min-width:1.6em;height:1.2em;padding:0 .15em;
+  border:3px dashed var(--amber);border-radius:10px;color:var(--amber);
+}
+.problem.pop{animation:pop .35s ease-out}
+.msg{font-size:14px;color:var(--muted);min-height:1.3em;text-align:center}
+.msg.good{color:var(--mint)} .msg.bad{color:var(--rose)}
+
+.stage{position:relative;flex:1;min-height:320px;border:2px solid var(--line);border-radius:14px;overflow:hidden;background:var(--night)}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+.overlay{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:14px;
+  padding:20px;text-align:center;background:rgba(8,6,31,.86);overflow-y:auto;
+}
+.overlay h1,.overlay h2{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance;line-height:1.05}
+.overlay h1{font-size:clamp(32px, 9vw, 46px);color:var(--amber)}
+.overlay h2{font-size:32px;color:var(--amber)}
+.overlay p{margin:0;max-width:36ch;line-height:1.45;color:var(--ink)}
+.overlay .small{font-size:13px;color:var(--muted)}
+
+.setting{display:flex;flex-direction:column;align-items:center;gap:7px;width:100%}
+.chips{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+  font-weight:700;font-size:15px;color:var(--ink);background:var(--night);
+  border:2px solid var(--line);border-radius:999px;padding:7px 13px;min-height:40px;
+}
+.chip .sym{font-family:var(--display);font-size:16px;color:var(--amber)}
+.chip.num{min-width:44px;justify-content:center;font-family:var(--display);font-weight:400}
+input:checked + .chip{background:var(--amber);border-color:var(--amber);color:var(--deep)}
+input:checked + .chip .sym{color:var(--deep)}
+input:focus-visible + .chip{outline:3px solid var(--mint);outline-offset:2px}
+.chip:hover{border-color:var(--muted)}
+.level-desc{font-size:13px;color:var(--muted);min-height:1.2em}
+.toggle{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer}
+.toggle input{width:20px;height:20px;accent-color:var(--amber)}
+
+.big-btn{
+  font-family:var(--display);font-size:20px;color:var(--deep);background:var(--amber);
+  border:0;border-radius:12px;padding:13px 28px;cursor:pointer;box-shadow:0 5px 0 var(--amber-dark);
+}
+.big-btn:active{transform:translateY(3px);box-shadow:0 2px 0 var(--amber-dark)}
+.ghost-btn{font-family:var(--body);font-weight:700;font-size:15px;color:var(--ink);background:none;border:2px solid var(--line);border-radius:12px;padding:10px 18px;cursor:pointer}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center}
+.results{display:flex;gap:18px;font-variant-numeric:tabular-nums}
+.results div{display:flex;flex-direction:column;gap:2px}
+.results .val{font-size:24px}
+
+.pad{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:10px}
+.padbtn{
+  height:62px;border-radius:14px;border:2px solid var(--line);background:var(--night);color:var(--ink);
+  font-family:var(--display);font-size:24px;cursor:pointer;touch-action:none;-webkit-touch-callout:none;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 var(--line);
+}
+.padbtn.fire{background:var(--rose);border-color:var(--rose);color:var(--deep);font-size:20px;box-shadow:0 4px 0 #a83c56}
+.padbtn.held{transform:translateY(3px);box-shadow:0 1px 0 var(--line);border-color:var(--muted)}
+.padbtn.fire.held{box-shadow:0 1px 0 #a83c56;border-color:var(--rose)}
+.foot{font-size:12px;color:var(--muted);text-align:center}
+.foot kbd{font-family:var(--body);font-weight:700;border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--ink)}
+@media (hover:none) and (pointer:coarse){.foot{display:none}}
+
+@keyframes pop{0%{transform:scale(.7);opacity:.3}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@media (prefers-reduced-motion: reduce){.marquee.bad,.problem.pop{animation:none}}
+@media (max-width:420px){.btns .icon-btn{padding:6px 8px}.hud{gap:6px}.chip{padding:6px 10px;font-size:14px}}
+</style>
+</head>
+<body>
+
+<div class="cab">
+  <div class="hud">
+    <div class="stat"><span class="label">Score</span><span class="val" id="score">0</span></div>
+    <div class="stat lvl"><span class="label" id="lvlNum">Level 1 · Addition</span><span class="val" id="lvlName">Sums to 10</span></div>
+    <div class="stat"><span class="label">Ships</span><span class="lives" id="lives"></span></div>
+    <div class="btns">
+      <button class="icon-btn" id="soundBtn" aria-pressed="true">Sound on</button>
+      <button class="icon-btn" id="pauseBtn">Pause</button>
+    </div>
+  </div>
+
+  <div class="marquee" id="marquee">
+    <span class="label">Fill in the blank</span>
+    <div class="problem" id="problem" aria-live="polite"></div>
+    <div class="msg" id="msg">Shoot the alien carrying the missing number.</div>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="game" aria-label="Game playfield"></canvas>
+
+    <div class="overlay" id="titleScreen">
+      <h1>Number Blasters</h1>
+      <p>Shoot the alien carrying the number that fills the blank. Shoot the wrong alien and it drops a bomb, so dodge!</p>
+
+      <div class="setting" role="radiogroup" aria-labelledby="opLabel">
+        <span class="label" id="opLabel">Math</span>
+        <div class="chips">
+          <input class="sr" type="radio" name="op" id="op-add" value="add"><label class="chip" for="op-add"><span class="sym">+</span>Add</label>
+          <input class="sr" type="radio" name="op" id="op-sub" value="sub"><label class="chip" for="op-sub"><span class="sym">−</span>Subtract</label>
+          <input class="sr" type="radio" name="op" id="op-mul" value="mul"><label class="chip" for="op-mul"><span class="sym">×</span>Multiply</label>
+          <input class="sr" type="radio" name="op" id="op-div" value="div"><label class="chip" for="op-div"><span class="sym">÷</span>Divide</label>
+          <input class="sr" type="radio" name="op" id="op-mix" value="mix"><label class="chip" for="op-mix"><span class="sym">?</span>Mix</label>
+        </div>
+      </div>
+
+      <div class="setting" role="radiogroup" aria-labelledby="lvLabel">
+        <span class="label" id="lvLabel">Level</span>
+        <div class="chips">
+          <input class="sr" type="radio" name="lv" id="lv-1" value="1"><label class="chip num" for="lv-1">1</label>
+          <input class="sr" type="radio" name="lv" id="lv-2" value="2"><label class="chip num" for="lv-2">2</label>
+          <input class="sr" type="radio" name="lv" id="lv-3" value="3"><label class="chip num" for="lv-3">3</label>
+          <input class="sr" type="radio" name="lv" id="lv-4" value="4"><label class="chip num" for="lv-4">4</label>
+          <input class="sr" type="radio" name="lv" id="lv-5" value="5"><label class="chip num" for="lv-5">5</label>
+        </div>
+        <span class="level-desc" id="levelDesc"></span>
+      </div>
+
+      <label class="toggle"><input type="checkbox" id="levelUp" checked> Level up every 5 problems solved</label>
+
+      <button class="big-btn" id="startBtn">Start</button>
+      <a class="home-link" href="../../">← All games</a>
+      <p class="small" id="bestLine"></p>
+    </div>
+
+    <div class="overlay" id="pauseScreen" hidden>
+      <h2>Paused</h2>
+      <div class="row">
+        <button class="big-btn" id="resumeBtn">Keep playing</button>
+        <button class="ghost-btn" id="quitBtn">Change math</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="overScreen" hidden>
+      <h2>Game over</h2>
+      <div class="results">
+        <div><span class="label">Score</span><span class="val" id="finalScore">0</span></div>
+        <div><span class="label">Solved</span><span class="val" id="finalSolved">0</span></div>
+        <div><span class="label">Level</span><span class="val" id="finalLevel">1</span></div>
+      </div>
+      <p class="small" id="finalBest"></p>
+      <div class="row">
+        <button class="big-btn" id="againBtn">Play again</button>
+        <button class="ghost-btn" id="menuBtn">Change math</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="pad" aria-label="Touch controls">
+    <button class="padbtn" data-key="padL" aria-label="Move left">◀</button>
+    <button class="padbtn fire" data-key="padF">Fire</button>
+    <button class="padbtn" data-key="padR" aria-label="Move right">▶</button>
+  </div>
+  <div class="foot">Keyboard: <kbd>←</kbd> <kbd>→</kbd> to move, <kbd>Space</kbd> to fire, <kbd>P</kbd> to pause.</div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const cv = $('game'), ctx = cv.getContext('2d'), stage = $('stage');
+const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const C = {night:'#120d38', ink:'#f4f0ff', muted:'#a9a1da', amber:'#ffc23d', mint:'#4ce6c6', rose:'#ff6f8e', line:'#2e2670', deep:'#08061f'};
+const ALIEN_COLORS = ['#ff6f8e', '#b58cff', '#ff9a5c', '#5cb8ff'];
+
+/* ---------- helpers ---------- */
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+};
+
+/* ---------- problems ---------- */
+// A problem is  n0 op n1 = n2, with one of the three numbers blanked.
+function P(op, a, b, mode){
+  const c = op === '+' ? a + b : op === '−' ? a - b : op === '×' ? a * b : a / b;
+  const nums = [a, b, c];
+  const blank = mode === 'result' ? 2 : rnd(0, 2);
+  return {op, nums, blank, answer: nums[blank]};
+}
+const swap = (a, b) => Math.random() < .5 ? [a, b] : [b, a];
+const add = (a, b, m) => { const [x, y] = swap(a, b); return P('+', x, y, m); };
+const mul = (a, b, m) => { const [x, y] = swap(a, b); return P('×', x, y, m); };
+const div = (divisor, q, m) => P('÷', divisor * q, divisor, m);
+
+const OPS = {
+  add: {name:'Addition', levels:[
+    ['Sums to 10',            () => { const a=rnd(1,9); return add(a, rnd(1,10-a), 'result'); }],
+    ['Missing numbers to 10', () => { const a=rnd(1,9); return add(a, rnd(1,10-a), 'any'); }],
+    ['Within 20',             () => { const a=rnd(2,15); return add(a, rnd(Math.max(1,11-a), 20-a), 'any'); }],
+    ['Tens and ones',         () => add(rnd(10,40), rnd(2,9), 'any')],
+    ['Two-digit numbers',     () => { const a=rnd(11,69); return add(a, rnd(11, Math.min(88, 99-a)), 'any'); }],
+  ]},
+  sub: {name:'Subtraction', levels:[
+    ['Take away within 10',   () => { const a=rnd(2,10); return P('−', a, rnd(1,a-1), 'result'); }],
+    ['Missing numbers to 10', () => { const a=rnd(3,10); return P('−', a, rnd(1,a-1), 'any'); }],
+    ['Within 20',             () => { const a=rnd(11,20); return P('−', a, rnd(2,a-1), 'any'); }],
+    ['Tens and ones',         () => P('−', rnd(20,50), rnd(2,9), 'any')],
+    ['Two-digit numbers',     () => { const a=rnd(30,99); return P('−', a, rnd(11,a-10), 'any'); }],
+  ]},
+  mul: {name:'Multiplication', levels:[
+    ['Times 1, 2, 5 and 10',  () => mul(pick([1,2,5,10]), rnd(1,10), 'result')],
+    ['Facts up to 5 × 5',     () => mul(rnd(1,5), rnd(1,5), 'result')],
+    ['Facts up to 10 × 10',   () => mul(rnd(2,10), rnd(2,10), 'result')],
+    ['Missing factors',       () => mul(rnd(2,10), rnd(2,10), 'any')],
+    ['Facts up to 12 × 12',   () => mul(rnd(2,12), rnd(3,12), 'any')],
+  ]},
+  div: {name:'Division', levels:[
+    ['Divide by 1, 2, 5 and 10', () => div(pick([1,2,5,10]), rnd(1,10), 'result')],
+    ['Facts up to 25 ÷ 5',    () => div(rnd(2,5), rnd(1,5), 'result')],
+    ['Facts up to 100 ÷ 10',  () => div(rnd(2,10), rnd(2,10), 'result')],
+    ['Missing numbers',       () => div(rnd(2,10), rnd(2,10), 'any')],
+    ['Facts up to 144 ÷ 12',  () => div(rnd(2,12), rnd(2,12), 'any')],
+  ]},
+};
+const OP_KEYS = ['add','sub','mul','div'];
+const MAX_LEVEL = 5;
+const SOLVES_PER_LEVEL = 5;
+
+function levelLabel(op, lv){
+  if (op === 'mix') return 'Mixed practice';
+  return OPS[op].levels[lv-1][0];
+}
+function opLabel(op){ return op === 'mix' ? 'Mix' : OPS[op].name; }
+function genProblem(op, lv){
+  const k = op === 'mix' ? pick(OP_KEYS) : op;
+  return OPS[k].levels[lv-1][1]();
+}
+
+function wrongCandidates(p){
+  const ans = p.answer;
+  const offs = [1,-1,2,-2,3,-3,4,-4,5,-5];
+  if (ans >= 10) offs.push(10,-10,9,-9,11,-11);
+  let c = offs.map(o => ans + o);
+  if (p.op === '×' && p.blank === 2) c.push(ans + p.nums[0], ans - p.nums[0], ans + p.nums[1], ans - p.nums[1]);
+  if (p.op === '÷' && p.blank === 0) c.push(ans + p.nums[1], ans - p.nums[1]);
+  const min = (p.op === '×' || p.op === '÷') ? 1 : 0;
+  return [...new Set(c)].filter(v => v >= min && v !== ans);
+}
+
+/* ---------- settings ---------- */
+const settings = {
+  op: ['add','sub','mul','div','mix'].includes(store.get('nb-op')) ? store.get('nb-op') : 'add',
+  lv: Math.min(5, Math.max(1, parseInt(store.get('nb-lv') || '1', 10) || 1)),
+  levelUp: store.get('nb-levelup') !== 'off',
+};
+$('op-' + settings.op).checked = true;
+$('lv-' + settings.lv).checked = true;
+$('levelUp').checked = settings.levelUp;
+
+function onSettings(){
+  settings.op = document.querySelector('input[name="op"]:checked').value;
+  settings.lv = parseInt(document.querySelector('input[name="lv"]:checked').value, 10);
+  settings.levelUp = $('levelUp').checked;
+  store.set('nb-op', settings.op); store.set('nb-lv', settings.lv); store.set('nb-levelup', settings.levelUp ? 'on' : 'off');
+  $('levelDesc').textContent = settings.op === 'mix'
+    ? 'All four operations at level ' + settings.lv
+    : levelLabel(settings.op, settings.lv);
+  showSample();
+}
+document.querySelectorAll('input[name="op"], input[name="lv"], #levelUp').forEach(el => el.addEventListener('change', onSettings));
+
+/* ---------- state ---------- */
+let W = 480, H = 640, dpr = 1, sc = 1;
+let state = 'title';
+let G = null;
+let stars = [];
+let lastKey = '';
+
+function newGame(){
+  G = {
+    op: settings.op, startLv: settings.lv, levelUp: settings.levelUp,
+    score:0, lives:3, level:settings.lv, solved:0, streak:0, t:0,
+    aliens:[], bullets:[], bombs:[], parts:[], texts:[],
+    problem:null, spawnT:0.4, fireCd:0, banner:null, shake:0,
+    player:{x:W/2, y:H-56, target:null, inv:0}, fireQueued:false,
+  };
+  nextProblem(false);
+  G.banner = {text:'Level ' + G.level, sub:levelLabel(G.op, G.level), t:2.2};
+  updateHud();
+}
+
+function nextProblem(animate=true){
+  let p, key, tries=0;
+  do { p = genProblem(G.op, G.level); key = p.nums.join(p.op) + '@' + p.blank; tries++; }
+  while (key === lastKey && tries < 20);
+  lastKey = key;
+  G.problem = p;
+  // relabel aliens already on screen
+  const pool = shuffle(wrongCandidates(p));
+  G.aliens.forEach((a,i) => { a.value = pool[i % pool.length]; });
+  const high = G.aliens.filter(a => a.y < dangerY() * 0.55);
+  if (high.length) pick(high).value = p.answer;
+  renderProblem(p, animate);
+}
+
+const OP_WORD = {'+':'plus', '−':'minus', '×':'times', '÷':'divided by'};
+function renderProblem(p, animate){
+  const el = $('problem');
+  const tok = i => i === p.blank ? '<span class="blank">?</span>' : `<span>${p.nums[i]}</span>`;
+  el.innerHTML = `${tok(0)}<span class="op">${p.op}</span>${tok(1)}<span class="op">=</span>${tok(2)}`;
+  const w = i => i === p.blank ? 'blank' : p.nums[i];
+  el.setAttribute('aria-label', `${w(0)} ${OP_WORD[p.op]} ${w(1)} equals ${w(2)}`);
+  if (animate){ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+}
+const equationText = p => `${p.nums[0]} ${p.op} ${p.nums[1]} = ${p.nums[2]}`;
+
+function showSample(){ if (state === 'title' || !G) renderProblem(genProblem(settings.op, settings.lv), true); }
+
+const DEFAULT_MSG = 'Shoot the alien carrying the missing number.';
+let msgTimer = 0;
+function say(text, kind){
+  const m = $('msg'), mq = $('marquee');
+  m.textContent = text; m.className = 'msg ' + (kind||'');
+  mq.classList.remove('good','bad'); void mq.offsetWidth;
+  if (kind) mq.classList.add(kind);
+  clearTimeout(msgTimer);
+  msgTimer = setTimeout(() => { m.textContent = DEFAULT_MSG; m.className = 'msg'; mq.classList.remove('good','bad'); }, 1700);
+}
+
+function updateHud(){
+  if (!G) return;
+  $('score').textContent = G.score;
+  $('lvlNum').textContent = 'Level ' + G.level + ' · ' + opLabel(G.op);
+  $('lvlName').textContent = levelLabel(G.op, G.level);
+  let h=''; for(let i=0;i<3;i++) h += i < G.lives ? '♥' : '<span class="gone">♥</span>';
+  $('lives').innerHTML = h;
+}
+
+/* ---------- sizing ---------- */
+function resize(){
+  const r = stage.getBoundingClientRect();
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  sc = r.width / 480;
+  W = 480; H = Math.max(420, r.height / sc);
+  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+  ctx.setTransform(dpr*sc,0,0,dpr*sc,0,0);
+  if (G){ G.player.y = H - 56; G.player.x = Math.min(Math.max(G.player.x, 24), W-24); }
+  if (!stars.length) for (let i=0;i<70;i++) stars.push({x:Math.random()*480, y:Math.random()*1000, s:Math.random()*1.6+.4, v:rand(8,30)});
+}
+const dangerY = () => H - 92;
+
+/* ---------- audio ---------- */
+let ac = null, soundOn = store.get('nb-sound') !== 'off';
+function tone(f1, f2, dur, type='square', vol=.06){
+  if (!ac || !soundOn) return;
+  const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t+dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0008, t+dur);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t+dur+.02);
+}
+const sfx = {
+  shoot(){ tone(880, 440, .09, 'square', .03); },
+  good(){ tone(523, 1046, .12, 'triangle', .09); setTimeout(()=>tone(784, 1568, .16, 'triangle', .08), 90); },
+  shield(){ tone(180, 120, .18, 'sawtooth', .05); setTimeout(()=>tone(600, 200, .25, 'triangle', .05), 120); },
+  hurt(){ tone(300, 60, .45, 'sawtooth', .08); },
+  level(){ [523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,f*1.01,.14,'triangle',.07), i*110)); },
+};
+function setSound(on){
+  soundOn = on; store.set('nb-sound', on ? 'on' : 'off');
+  $('soundBtn').textContent = on ? 'Sound on' : 'Sound off';
+  $('soundBtn').setAttribute('aria-pressed', String(on));
+}
+
+/* ---------- spawning ---------- */
+function targetCount(){ return Math.min(3 + Math.floor((G.level-1)/2) + (G.t > 120 ? 1 : 0), 6); }
+function alienSpeed(){ return 16 + G.level * 5 + Math.min(34, G.t / 8); }
+
+function spawnAlien(forceCorrect){
+  const p = G.problem;
+  const shown = new Set(G.aliens.map(a=>a.value));
+  const hasCorrect = G.aliens.some(a => a.value === p.answer);
+  let value;
+  if (forceCorrect || (!hasCorrect && Math.random() < .7)) value = p.answer;
+  else {
+    const all = wrongCandidates(p), c = all.filter(v => !shown.has(v));
+    value = c.length ? pick(c) : pick(all);
+  }
+  let x = 0, ok = false;
+  for (let i=0;i<14 && !ok;i++){
+    x = rand(42, W-42);
+    ok = G.aliens.every(a => a.y > 130 || Math.abs(a.baseX - x) > 76);
+  }
+  G.aliens.push({
+    baseX:x, x, y:-34, r:25, value,
+    vy: alienSpeed() * rand(.85, 1.15),
+    amp: rand(6, 26), phase: rand(0, 6.28), freq: rand(.8, 1.5),
+    color: pick(ALIEN_COLORS), shield:0, wob:0,
+  });
+}
+
+function ensureCorrect(){
+  if (G.aliens.some(a => a.value === G.problem.answer)) return;
+  const high = G.aliens.filter(a => a.y < dangerY()*0.4).sort((a,b)=>a.y-b.y);
+  if (high.length && G.aliens.length >= targetCount()) high[0].value = G.problem.answer;
+  else spawnAlien(true);
+}
+
+/* ---------- effects ---------- */
+function burst(x, y, color, n=18, speed=160){
+  if (reduceMotion) n = Math.ceil(n/3);
+  for (let i=0;i<n;i++){
+    const a = rand(0, Math.PI*2), s = rand(speed*.3, speed);
+    G.parts.push({x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s, life:rand(.4,.8), max:.8, color, size:rand(2,4)});
+  }
+}
+function floatText(x, y, text, color, size=18, life=1.2){ G.texts.push({x, y, text, color, size, life, max:life}); }
+
+/* ---------- actions ---------- */
+function fire(){
+  if (G.fireCd > 0 || G.bullets.length >= 3) return false;
+  G.bullets.push({x:G.player.x, y:G.player.y - 24, vy:-560});
+  G.fireCd = .26; sfx.shoot(); return true;
+}
+
+function hitCorrect(a){
+  const p = G.problem;
+  G.streak++; G.solved++;
+  const pts = 10 * G.level + 5 * Math.min(G.streak - 1, 5);
+  G.score += pts;
+  burst(a.x, a.y, C.mint, 26, 220); burst(a.x, a.y, C.amber, 12, 140);
+  floatText(a.x, a.y - 8, '+' + pts, C.mint, 20);
+  floatText(Math.min(Math.max(a.x, 110), W-110), a.y + 26, equationText(p), C.ink, 17, 1.6);
+  sfx.good();
+  say(G.streak >= 3 ? `${equationText(p)}  ·  ${G.streak} in a row!` : `Yes! ${equationText(p)}`, 'good');
+  G.aliens.splice(G.aliens.indexOf(a), 1);
+  if (G.levelUp && G.level < MAX_LEVEL && G.solved % SOLVES_PER_LEVEL === 0){
+    G.level++;
+    G.banner = {text:'Level ' + G.level, sub:levelLabel(G.op, G.level), t:2.4};
+    setTimeout(sfx.level, 250);
+  }
+  nextProblem(true);
+  updateHud();
+}
+
+function hitWrong(a, b){
+  a.shield = .55; a.wob = .3;
+  G.streak = 0;
+  burst(b.x, a.y + a.r, '#9ef3ff', 8, 120);
+  floatText(a.x, a.y - a.r - 10, 'Shield!', '#9ef3ff', 15, .9);
+  // the angry alien drops a bomb straight down
+  G.bombs.push({x:a.x, y:a.y + a.r + 4, vy: 150 + G.level * 14});
+  sfx.shield();
+  say(`${a.value} doesn't fit. Dodge the bomb!`, 'bad');
+}
+
+function loseLife(x, y){
+  if (state !== 'play') return;
+  G.lives--; G.player.inv = 1.8; G.streak = 0;
+  G.shake = reduceMotion ? 0 : .35;
+  burst(x, y, C.rose, 30, 220);
+  sfx.hurt(); updateHud();
+  if (G.lives <= 0) setTimeout(gameOver, 500);
+}
+
+/* ---------- update ---------- */
+const keys = {};
+function update(dt){
+  G.t += dt;
+  const P = G.player;
+
+  // player movement
+  const right = keys.ArrowRight || keys.KeyD || keys.padR, left = keys.ArrowLeft || keys.KeyA || keys.padL;
+  const dir = (right ? 1 : 0) - (left ? 1 : 0);
+  if (dir){ P.x += dir * 380 * dt; P.target = null; }
+  else if (P.target != null){
+    const d = P.target - P.x, step = 560 * dt;
+    P.x += Math.abs(d) <= step ? d : Math.sign(d) * step;
+    if (Math.abs(d) <= step) P.target = null;
+  }
+  P.x = Math.min(Math.max(P.x, 24), W - 24);
+  P.inv = Math.max(0, P.inv - dt);
+  G.fireCd = Math.max(0, G.fireCd - dt);
+  if ((keys.Space || keys.padF) && G.fireCd === 0) fire();
+  if (G.fireQueued && P.target == null){ if (fire() || G.bullets.length >= 3) G.fireQueued = false; }
+
+  // spawning
+  G.spawnT -= dt;
+  if (G.spawnT <= 0 && G.aliens.length < targetCount()){
+    spawnAlien(false); G.spawnT = Math.max(.6, 1.6 - G.level * .12);
+  }
+  ensureCorrect();
+
+  // aliens: ones that reach the line just fly away, no penalty
+  const dy = dangerY();
+  for (let i = G.aliens.length - 1; i >= 0; i--){
+    const a = G.aliens[i];
+    a.y += a.vy * dt;
+    a.x = Math.min(Math.max(a.baseX + Math.sin(a.phase + G.t * a.freq) * a.amp, 30), W - 30);
+    a.shield = Math.max(0, a.shield - dt); a.wob = Math.max(0, a.wob - dt);
+    if (a.y > dy){
+      G.aliens.splice(i, 1);
+      burst(a.x, dy, C.muted, 8, 80);
+    }
+  }
+
+  // bullets
+  for (let i = G.bullets.length - 1; i >= 0; i--){
+    const b = G.bullets[i];
+    b.y += b.vy * dt;
+    if (b.y < -20){ G.bullets.splice(i, 1); continue; }
+    for (const a of G.aliens){
+      const dx = b.x - a.x, dy2 = b.y - a.y;
+      if (dx*dx + dy2*dy2 < (a.r + 9) * (a.r + 9)){
+        G.bullets.splice(i, 1);
+        if (a.value === G.problem.answer) hitCorrect(a); else hitWrong(a, b);
+        break;
+      }
+    }
+  }
+
+  // bombs
+  for (let i = G.bombs.length - 1; i >= 0; i--){
+    const b = G.bombs[i];
+    b.y += b.vy * dt;
+    if (b.y > H + 10){ G.bombs.splice(i, 1); continue; }
+    if (P.inv === 0 && Math.abs(b.x - P.x) < 20 && Math.abs(b.y - P.y) < 18){
+      G.bombs.splice(i, 1); loseLife(P.x, P.y);
+    }
+  }
+
+  // particles & texts
+  for (let i = G.parts.length - 1; i >= 0; i--){
+    const p = G.parts[i]; p.life -= dt;
+    if (p.life <= 0){ G.parts.splice(i, 1); continue; }
+    p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .97; p.vy *= .97;
+  }
+  for (let i = G.texts.length - 1; i >= 0; i--){
+    const t = G.texts[i]; t.life -= dt; t.y -= 26 * dt;
+    if (t.life <= 0) G.texts.splice(i, 1);
+  }
+  if (G.banner){ G.banner.t -= dt; if (G.banner.t <= 0) G.banner = null; }
+  G.shake = Math.max(0, G.shake - dt);
+}
+
+/* ---------- draw ---------- */
+function drawStars(dt){
+  ctx.fillStyle = C.night; ctx.fillRect(0, 0, W, H);
+  for (const s of stars){
+    if (!reduceMotion) s.y += s.v * dt;
+    if (s.y > H) { s.y = -2; s.x = Math.random() * W; }
+    ctx.globalAlpha = .35 + s.s * .3;
+    ctx.fillStyle = s.s > 1.4 ? '#fff4d6' : C.muted;
+    ctx.fillRect(s.x, s.y, s.s, s.s);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawShip(P){
+  if (P.inv > 0 && Math.floor(P.inv * 10) % 2 === 0) return;
+  const {x, y} = P;
+  ctx.save(); ctx.translate(x, y);
+  ctx.fillStyle = 'rgba(255,194,61,.35)';
+  ctx.beginPath(); ctx.ellipse(0, 20, 8, 6 + Math.sin(performance.now()/60)*2, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#d99a1c';
+  ctx.beginPath(); ctx.moveTo(-24, 14); ctx.lineTo(-8, -2); ctx.lineTo(-8, 16); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(24, 14); ctx.lineTo(8, -2); ctx.lineTo(8, 16); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = C.amber;
+  ctx.beginPath(); ctx.moveTo(0, -24); ctx.lineTo(11, 4); ctx.lineTo(9, 18); ctx.lineTo(-9, 18); ctx.lineTo(-11, 4); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = C.deep;
+  ctx.beginPath(); ctx.ellipse(0, -2, 4.5, 8, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#7fd8ff';
+  ctx.beginPath(); ctx.ellipse(-1, -5, 1.6, 3, 0, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawAlien(a){
+  const wob = a.wob > 0 ? Math.sin(a.wob * 60) * 3 : 0;
+  ctx.save(); ctx.translate(a.x + wob, a.y);
+  const t = performance.now() / 300 + a.phase;
+  ctx.strokeStyle = a.color; ctx.lineWidth = 4; ctx.lineCap = 'round';
+  for (const s of [-1, 1]){
+    ctx.beginPath(); ctx.moveTo(s*18, 8); ctx.lineTo(s*30, 16 + Math.sin(t)*4*s); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s*10, -20); ctx.lineTo(s*15, -32); ctx.stroke();
+    ctx.fillStyle = a.color; ctx.beginPath(); ctx.arc(s*15, -33, 3.5, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.fillStyle = a.color;
+  ctx.beginPath(); ctx.arc(0, 0, a.r - 3, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = C.deep;
+  ctx.beginPath(); ctx.arc(0, 2, a.r - 9, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = C.ink;
+  const str = String(a.value);
+  ctx.font = `${str.length > 2 ? 14 : str.length > 1 ? 17 : 20}px Bungee, Impact, sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(str, 0, 3);
+  const s = a.shield;
+  ctx.strokeStyle = s > 0 ? `rgba(158,243,255,${.4 + s})` : 'rgba(158,243,255,.16)';
+  ctx.lineWidth = s > 0 ? 3 : 1.5;
+  ctx.setLineDash(s > 0 ? [] : [4, 5]);
+  ctx.beginPath(); ctx.arc(0, 0, a.r + 8 + (s > 0 ? (0.55 - s) * 10 : 0), 0, Math.PI*2); ctx.stroke();
+  ctx.setLineDash([]);
+  if (s > 0){
+    ctx.fillStyle = `rgba(158,243,255,${s * .35})`;
+    ctx.beginPath(); ctx.arc(0, 0, a.r + 8, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function draw(dt){
+  ctx.save();
+  if (G && G.shake > 0) ctx.translate(rand(-5,5), rand(-5,5));
+  drawStars(dt);
+  if (!G || state === 'title'){ ctx.restore(); return; }
+
+  const dy = dangerY();
+  ctx.strokeStyle = 'rgba(169,161,218,.25)'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 10]);
+  ctx.beginPath(); ctx.moveTo(0, dy); ctx.lineTo(W, dy); ctx.stroke(); ctx.setLineDash([]);
+
+  for (const a of G.aliens) drawAlien(a);
+
+  ctx.fillStyle = C.amber;
+  for (const b of G.bullets){ ctx.fillRect(b.x - 2, b.y - 9, 4, 14); }
+  for (const b of G.bombs){
+    ctx.fillStyle = C.rose; ctx.beginPath(); ctx.arc(b.x, b.y, 7, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ffd1db'; ctx.beginPath(); ctx.arc(b.x - 2, b.y - 2, 2.2, 0, Math.PI*2); ctx.fill();
+  }
+  drawShip(G.player);
+
+  for (const p of G.parts){
+    ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.color;
+    ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+  }
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const t of G.texts){
+    ctx.globalAlpha = Math.min(1, t.life / t.max * 2);
+    ctx.font = `${t.size}px Bungee, Impact, sans-serif`;
+    ctx.lineWidth = 4; ctx.strokeStyle = C.deep; ctx.strokeText(t.text, t.x, t.y);
+    ctx.fillStyle = t.color; ctx.fillText(t.text, t.x, t.y);
+  }
+  ctx.globalAlpha = 1;
+
+  if (G.banner){
+    const b = G.banner;
+    ctx.globalAlpha = Math.min(1, b.t * 2);
+    ctx.font = '40px Bungee, Impact, sans-serif';
+    ctx.lineWidth = 6; ctx.strokeStyle = C.deep;
+    ctx.strokeText(b.text, W/2, H*0.4); ctx.fillStyle = C.amber; ctx.fillText(b.text, W/2, H*0.4);
+    ctx.font = 'bold 20px "Atkinson Hyperlegible", system-ui, sans-serif';
+    ctx.strokeText(b.sub, W/2, H*0.4 + 38); ctx.fillStyle = C.ink; ctx.fillText(b.sub, W/2, H*0.4 + 38);
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+}
+
+/* ---------- loop ---------- */
+let last = performance.now();
+function frame(now){
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (state === 'play') update(dt);
+  draw(state === 'play' || state === 'title' ? dt : 0);
+  requestAnimationFrame(frame);
+}
+
+/* ---------- screens ---------- */
+function show(id){ ['titleScreen','pauseScreen','overScreen'].forEach(s => $(s).hidden = s !== id); }
+function best(){ return parseInt(store.get('nb-best') || '0', 10) || 0; }
+
+function start(){
+  if (!ac){ try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
+  if (ac && ac.state === 'suspended') ac.resume();
+  newGame(); state = 'play'; show(null);
+  $('pauseBtn').textContent = 'Pause';
+  say(DEFAULT_MSG);
+}
+function pause(){ if (state !== 'play') return; state = 'paused'; show('pauseScreen'); $('pauseBtn').textContent = 'Resume'; clearKeys(); }
+function resume(){ if (state !== 'paused') return; state = 'play'; show(null); $('pauseBtn').textContent = 'Pause'; last = performance.now(); }
+function toMenu(){
+  state = 'title'; G = null; show('titleScreen'); $('pauseBtn').textContent = 'Pause';
+  const b = best(); $('bestLine').textContent = b ? 'Best score: ' + b : '';
+  showSample();
+}
+function gameOver(){
+  state = 'over'; clearKeys();
+  const b = Math.max(best(), G.score); store.set('nb-best', b);
+  $('finalScore').textContent = G.score; $('finalSolved').textContent = G.solved; $('finalLevel').textContent = G.level;
+  $('finalBest').textContent = G.score >= b && G.score > 0 ? 'New best score!' : 'Best score: ' + b;
+  show('overScreen'); $('againBtn').focus();
+}
+
+$('startBtn').onclick = start;
+$('againBtn').onclick = start;
+$('resumeBtn').onclick = resume;
+$('menuBtn').onclick = toMenu;
+$('quitBtn').onclick = toMenu;
+$('pauseBtn').onclick = () => state === 'paused' ? resume() : pause();
+$('soundBtn').onclick = () => setSound(!soundOn);
+setSound(soundOn);
+
+/* ---------- input: keyboard ---------- */
+function clearKeys(){ for (const k in keys) keys[k] = false; document.querySelectorAll('.padbtn.held').forEach(b => b.classList.remove('held')); }
+addEventListener('keydown', e => {
+  if (['ArrowLeft','ArrowRight','Space','KeyA','KeyD'].includes(e.code)){
+    if (state === 'play'){ e.preventDefault(); keys[e.code] = true; }
+  }
+  if (e.code === 'KeyP' || e.code === 'Escape'){ state === 'play' ? pause() : resume(); }
+});
+addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('blur', () => { clearKeys(); pause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+
+/* ---------- input: touch pad (hold to move, hold fire to keep shooting) ---------- */
+document.querySelectorAll('.padbtn').forEach(btn => {
+  const k = btn.dataset.key;
+  const down = e => {
+    e.preventDefault();
+    if (state !== 'play') return;
+    keys[k] = true; btn.classList.add('held');
+    if (G) G.player.target = null;
+    try { btn.setPointerCapture(e.pointerId); } catch(err){}
+  };
+  const up = () => { keys[k] = false; btn.classList.remove('held'); };
+  btn.addEventListener('pointerdown', down);
+  btn.addEventListener('pointerup', up);
+  btn.addEventListener('pointercancel', up);
+  btn.addEventListener('lostpointercapture', up);
+  btn.addEventListener('contextmenu', e => e.preventDefault());
+  btn.addEventListener('keydown', e => { if (e.code === 'Enter' && state === 'play'){ e.preventDefault(); keys[k] = true; } });
+  btn.addEventListener('keyup', e => { if (e.code === 'Enter') keys[k] = false; });
+});
+
+/* ---------- input: tap the playfield to fly under a spot and fire ---------- */
+function toX(e){ const r = cv.getBoundingClientRect(); return (e.clientX - r.left) / sc; }
+let dragging = false;
+cv.addEventListener('pointerdown', e => {
+  if (state !== 'play') return;
+  e.preventDefault(); dragging = true;
+  try { cv.setPointerCapture(e.pointerId); } catch(err){}
+  G.player.target = Math.min(Math.max(toX(e), 24), W - 24);
+  G.fireQueued = true;
+});
+cv.addEventListener('pointermove', e => { if (dragging && state === 'play') G.player.target = Math.min(Math.max(toX(e), 24), W - 24); });
+const endDrag = () => { dragging = false; };
+cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', endDrag);
+
+/* ---------- boot ---------- */
+new ResizeObserver(resize).observe(stage);
+resize();
+onSettings();
+const bst = best(); if (bst) $('bestLine').textContent = 'Best score: ' + bst;
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

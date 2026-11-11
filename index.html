@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Games 4 Ed</title>
+<meta name="description" content="Free math games for kids. No ads, no sign-up. Practice addition, subtraction, multiplication and division by playing.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: a short intro, then one column of game cards (two or three across on wide screens), then notes for grown-ups. */
+:root{
+  --bg:#fbf7ef;
+  --card:#ffffff;
+  --ink:#1d2333;
+  --muted:#5b6377;
+  --line:#e6dfd0;
+  --accent:#2f6fd6;
+  --accent-ink:#ffffff;
+  --chip:#f1ece0;
+  --display:'Bricolage Grotesque', 'Arial Black', system-ui, sans-serif;
+  --body:'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#12151f;--card:#1b2030;--ink:#f1efe8;--muted:#a3aac0;--line:#2c3348;--accent:#6fa8ff;--accent-ink:#0d1220;--chip:#252b3e;color-scheme:dark}
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.5;
+  padding-left:max(18px, env(safe-area-inset-left, 0px));padding-right:max(18px, env(safe-area-inset-right, 0px));
+}
+.wrap{max-width:1120px;margin:0 auto;padding-block:40px 56px}
+header{display:grid;gap:10px;margin-bottom:34px;max-width:46rem}
+.brand{font-family:var(--display);font-weight:800;font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(36px, 7vw, 64px);line-height:1;margin:0;text-wrap:balance;letter-spacing:-.01em}
+.lead{margin:0;font-size:19px;color:var(--muted);max-width:38rem}
+.pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.pills span{background:var(--chip);border-radius:999px;padding:4px 12px;font-size:14px;font-weight:700}
+
+.games{display:grid;grid-template-columns:repeat(auto-fill, minmax(min(100%, 320px), 1fr));gap:22px}
+.game{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;color:inherit;text-decoration:none;transition:transform .15s, box-shadow .15s}
+.game:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(20,25,40,.12)}
+.game:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.shot{aspect-ratio:16/10;background:#10131c;overflow:hidden}
+.shot img{width:100%;height:100%;object-fit:cover;display:block}
+.info{display:flex;flex-direction:column;gap:8px;padding:18px 20px 20px;flex:1}
+.info h2{font-family:var(--display);font-weight:800;font-size:26px;line-height:1.05;margin:0}
+.info p{margin:0;color:var(--muted);font-size:16px;min-width:0}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.tags span{font-size:13px;font-weight:700;background:var(--chip);border-radius:6px;padding:2px 8px}
+.play{margin-top:auto;padding-top:10px}
+.play span{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:var(--accent-ink);font-weight:700;border-radius:10px;padding:9px 18px}
+
+.grownups{margin-top:52px;display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%, 260px), 1fr));gap:22px;border-top:1px solid var(--line);padding-top:30px}
+.grownups h3{font-family:var(--display);font-weight:800;font-size:20px;margin:0 0 6px}
+.grownups p{margin:0;color:var(--muted);font-size:16px}
+footer{margin-top:40px;font-size:14px;color:var(--muted)}
+@media (prefers-reduced-motion: reduce){ .game{transition:none} .game:hover{transform:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="brand">Games 4 Ed</span>
+    <h1>Free math games that kids actually want to play</h1>
+    <p class="lead">Practice addition, subtraction, multiplication and division by blasting aliens, racing karts and fighting monsters. Pick a game and start playing.</p>
+    <div class="pills"><span>Free</span><span>No ads</span><span>No sign-up</span><span>Phones, tablets and computers</span></div>
+  </header>
+
+  <main class="games">
+    <a class="game" href="games/number-blasters/">
+      <div class="shot"><img src="assets/blasters.jpg" alt="Aliens carrying numbers fly toward a spaceship" style="object-position:center top" loading="lazy"></div>
+      <div class="info">
+        <h2>Number Blasters</h2>
+        <p>Aliens fly in carrying numbers. Shoot the one that fills the blank in the problem. Wrong numbers bounce off their shields.</p>
+        <div class="tags"><span>Arcade shooter</span><span>+ − × ÷</span><span>5 levels</span></div>
+        <div class="play"><span>Play →</span></div>
+      </div>
+    </a>
+    <a class="game" href="games/number-rally/">
+      <div class="shot"><img src="assets/rally.jpg" alt="A kart racing toward a volcano on a desert track" loading="lazy"></div>
+      <div class="info">
+        <h2>Number Rally</h2>
+        <p>Race karts on four science-themed tracks. Steer through the gate showing the answer to get a speed boost and a power-up.</p>
+        <div class="tags"><span>Racing</span><span>+ − × ÷</span><span>4 tracks</span></div>
+        <div class="play"><span>Play →</span></div>
+      </div>
+    </a>
+    <a class="game" href="games/number-knight/">
+      <div class="shot"><img src="assets/knight.jpg" alt="A knight in a garden dungeon facing slimes with equations above them" loading="lazy"></div>
+      <div class="info">
+        <h2>Number Knight</h2>
+        <p>Explore a dungeon where every monster carries an equation. Set your blade to the missing number, then strike. Three stages and three bosses.</p>
+        <div class="tags"><span>Adventure</span><span>+ − × ÷</span><span>3 stages</span></div>
+        <div class="play"><span>Play →</span></div>
+      </div>
+    </a>
+  </main>
+
+  <section class="grownups" aria-label="For parents and teachers">
+    <div>
+      <h3>Pick the right math</h3>
+      <p>Every game starts by asking which operation to practice and which of five levels to play, from sums to 10 up to 12 × 12 facts.</p>
+    </div>
+    <div>
+      <h3>Nothing to sign up for</h3>
+      <p>There are no accounts, ads or tracking. Settings and progress are saved only in the browser on the device being used.</p>
+    </div>
+    <div>
+      <h3>Works on school devices</h3>
+      <p>The games run in any modern browser, including Chromebooks and iPads, using touch controls or a keyboard.</p>
+    </div>
+  </section>
+
+  <footer>Games 4 Ed. More games on the way.</footer>
+</div>
+</body>
+</html>
