@@ -32,7 +32,8 @@ img{max-width:100%}
   --green:#5fe08a;
   --blue:#6fb6ff;
   --violet:#b58cff;
-  --pixel:'Pixelify Sans', 'Courier New', monospace;
+  --pixel:'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --title:'Pixelify Sans', 'Courier New', monospace;
   --body:'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
   color-scheme:dark;
 }
@@ -56,7 +57,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .hud{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .hearts{display:flex;gap:2px;font-size:22px;line-height:1;letter-spacing:-1px}
 .hearts .full{color:var(--red)} .hearts .half{color:#ff9a9a} .hearts .empty{color:#3a3f55}
-.count{display:flex;align-items:center;gap:4px;font-family:var(--pixel);font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.count{display:flex;align-items:center;gap:4px;font-family:var(--pixel);font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
 .count .ic{font-size:18px}
 .star{color:var(--gold)} .arrow{color:#d9c49a}
 .stage-name{margin-left:auto;font-family:var(--pixel);font-size:14px;color:var(--muted);text-align:right;line-height:1.1}
@@ -64,7 +65,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 
 .target{background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:6px 12px 8px;text-align:center;min-height:74px;display:flex;flex-direction:column;justify-content:center;gap:2px}
 .label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
-.eq{font-family:var(--pixel);font-size:clamp(28px, 8.5vw, 40px);font-weight:600;line-height:1.1;display:flex;gap:.25em;justify-content:center;align-items:center;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.eq{font-family:var(--pixel);font-size:clamp(28px, 8.5vw, 40px);font-weight:700;line-height:1.1;display:flex;gap:.25em;justify-content:center;align-items:center;flex-wrap:wrap;font-variant-numeric:tabular-nums}
 .eq .op{color:var(--muted)}
 .eq .blank{display:inline-flex;min-width:1.5em;justify-content:center;border:3px dashed var(--gold);border-radius:8px;color:var(--gold);padding:0 .12em;line-height:1.05}
 .eq.match .blank{background:rgba(255,203,71,.16)}
@@ -77,7 +78,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 #game{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;image-rendering:auto}
 .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:10px;padding:14px;text-align:center;background:rgba(10,12,20,.9);overflow-y:auto}
 .overlay h1,.overlay h2{font-family:var(--pixel);font-weight:700;margin:0;line-height:1;color:var(--gold);text-wrap:balance}
-.overlay h1{font-size:clamp(34px, 10vw, 54px);text-shadow:0 4px 0 #5a3e10}
+.overlay h1{font-family:var(--title);font-size:clamp(34px, 10vw, 54px);text-shadow:0 4px 0 #5a3e10}
 .overlay h2{font-size:32px}
 .overlay p{margin:0;max-width:40ch;line-height:1.4;font-size:14px}
 .overlay .small{font-size:12.5px;color:var(--muted)}
@@ -105,7 +106,7 @@ input:focus-visible + .chip{outline:3px solid var(--green);outline-offset:2px}
 
 .keypad{position:absolute;inset:auto 0 0 0;background:rgba(16,19,28,.96);border-top:2px solid var(--line);padding:8px;display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
 .keypad .kp-show{grid-column:1 / -1;display:flex;justify-content:space-between;align-items:center;font-family:var(--pixel);font-size:22px;padding:0 6px}
-.keypad button{height:42px;border-radius:8px;border:2px solid var(--line);background:var(--panel2);font-family:var(--pixel);font-size:22px;font-weight:600;cursor:pointer;touch-action:manipulation}
+.keypad button{height:42px;border-radius:8px;border:2px solid var(--line);background:var(--panel2);font-family:var(--pixel);font-size:22px;font-weight:700;cursor:pointer;touch-action:manipulation}
 .keypad .ok{background:var(--gold);color:#1a1405;border-color:var(--gold)}
 
 .blade{display:flex;align-items:center;justify-content:center;gap:8px}
@@ -1152,7 +1153,7 @@ function textImg(text, color, stroke, bold){
   const key = text + '|' + color + '|' + stroke + '|' + bold;
   let c = txtCache.get(key); if (c) return c;
   c = document.createElement('canvas');
-  const g = c.getContext('2d'), fs = 48, font = `${bold ? 700 : 600} ${fs}px "Pixelify Sans", "Courier New", monospace`;
+  const g = c.getContext('2d'), fs = 48, font = `700 ${fs}px "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif`;
   g.font = font;
   const pad = stroke ? 8 : 3, w = Math.ceil(g.measureText(text).width + pad * 2);
   c.width = w; c.height = Math.ceil(fs * 1.25);
@@ -1172,7 +1173,7 @@ function eqBubbleImg(p){
   const key = eqText(p);
   let c = eqImgCache.get(key); if (c) return c;
   c = document.createElement('canvas');
-  const g = c.getContext('2d'), fs = 44, font = `700 ${fs}px "Pixelify Sans", "Courier New", monospace`;
+  const g = c.getContext('2d'), fs = 44, font = `700 ${fs}px "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif`;
   g.font = font;
   const parts = [];
   p.nums.forEach((v, i) => { parts.push({t: i === p.blank ? '?' : String(v), c: i === p.blank ? '#d9480f' : '#1b1d2a'}); if (i === 0) parts.push({t: ' ' + p.op + ' ', c: '#55607a'}); if (i === 1) parts.push({t: ' = ', c: '#55607a'}); });
