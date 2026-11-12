@@ -86,6 +86,14 @@ input[type=text] { font: inherit; font-size: 20px; padding: 12px 14px; border-ra
 .grp b { font-family: var(--display); font-size: 22px; text-transform: uppercase; letter-spacing: .5px; line-height: 1.1; }
 .grp span { font-size: 14px; font-weight: 700; color: var(--muted); }
 .grp[aria-pressed="true"] { border-color: var(--gold); background: var(--gold-soft); }
+.modes { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.typein { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; grid-column: 1 / -1; }
+.typein input { flex: 1 1 280px; min-width: 0; font-family: var(--display); font-size: clamp(22px, 3.4vw, 30px); text-transform: uppercase; letter-spacing: .5px; padding: 14px 16px; border: 3px solid var(--line); border-radius: 16px; background: var(--paper); color: var(--ink); }
+.typein input:focus { outline: none; border-color: var(--gold); }
+.typein input.right { background: var(--good-soft); border-color: var(--good); color: var(--good); }
+.typein input.wrong { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+.typein .btn { min-height: 64px; }
+.typein .msg { flex-basis: 100%; margin: 0; font-weight: 700; color: var(--bad); }
 .grp:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 .tile svg { width: 64%; height: 64%; flex: none; }
 .tile .q { font-family: var(--display); font-size: 22px; color: var(--line); }
@@ -210,6 +218,13 @@ input[type=text] { font: inherit; font-size: 20px; padding: 12px 14px; border-ra
       <div class="groups" id="groups" role="group" aria-label="Choose states by when they joined the United States"></div>
       <p class="muted" id="group-note"></p>
     </div>
+    <div class="pick">
+      <p class="eyebrow">How do you want to answer?</p>
+      <div class="modes" id="modes" role="group" aria-label="Answer style">
+        <button class="grp" data-m="pick"><b>Pick from 4</b><span>Tap one of four state names</span></button>
+        <button class="grp" data-m="type"><b>Type it</b><span>Type the state's name. A list pops up to help with spelling.</span></button>
+      </div>
+    </div>
     <div class="row">
       <button class="btn" id="play">Solve 5 new states</button>
       <button class="btn ghost" id="review">Review game</button>
@@ -218,6 +233,7 @@ input[type=text] { font: inherit; font-size: 20px; padding: 12px 14px; border-ra
     <div class="grid50" id="grid50" aria-label="Your state collection"></div>
   </section>
 
+  <datalist id="state-names"></datalist>
   <!-- Guess -->
   <section class="card" id="s-q" hidden>
     <div class="progress" id="q-prog" aria-hidden="true"></div>
@@ -412,6 +428,33 @@ $('add-form').addEventListener('submit', e => {
 });
 $('who-chip').addEventListener('click', renderWho);
 $('menu-btn').addEventListener('click', renderHome);
+$('modes').addEventListener('click', e => { const b = e.target.closest('.grp'); if (!b) return; me().answer = b.dataset.m; save(); renderHome(); });
+// ---- answering: pick-from-4 buttons, or type the name with a list of all 50 to help spelling
+const ALPHA = [...S].sort((a, b) => a.name.localeCompare(b.name));
+$('state-names').innerHTML = ALPHA.map(x => `<option value="${esc(x.name)}">`).join('');
+const norm = t => t.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '');
+const BYNAME = Object.fromEntries(S.flatMap(s => [[norm(s.name), s.c], [norm(s.c), s.c]]));
+function typing() { return (me() || {}).answer === 'type'; }
+function answerBox(box, s, pool, onPick) {
+  if (!typing()) {
+    box.innerHTML = choicesFor(s, pool).map(x => `<button class="choice" data-c="${x.c}">${esc(x.name)}</button>`).join('');
+    box.onclick = e => { const b = e.target.closest('.choice'); if (!b || b.disabled) return;
+      for (const x of box.children) { x.disabled = true; if (x.dataset.c === s.c) x.classList.add('right'); }
+      if (b.dataset.c !== s.c) b.classList.add('wrong');
+      onPick(b.dataset.c); };
+    return;
+  }
+  box.innerHTML = `<form class="typein" autocomplete="off"><input list="state-names" placeholder="Type the state's name" aria-label="Type the state's name" spellcheck="false"><button class="btn" type="submit">Check</button><p class="msg" hidden></p></form>`;
+  box.onclick = null;
+  const f = box.querySelector('form'), inp = f.querySelector('input'), msg = f.querySelector('.msg');
+  f.onsubmit = e => { e.preventDefault(); if (inp.disabled) return;
+    const c = BYNAME[norm(inp.value)];
+    if (!c) { msg.hidden = false; msg.textContent = inp.value.trim() ? `“${inp.value.trim()}” isn't one of the 50 states. Check the spelling or pick from the list.` : 'Type a state name first.'; inp.focus(); return; }
+    msg.hidden = true; inp.value = BY[c].name; inp.disabled = true; f.querySelector('button').disabled = true;
+    inp.classList.add(c === s.c ? 'right' : 'wrong');
+    onPick(c); };
+  setTimeout(() => inp.focus({preventScroll: true}), 50);
+}
 $('groups').addEventListener('click', e => { const b = e.target.closest('.grp'); if (!b) return; me().group = b.dataset.g; save(); renderHome(); });
 
 // ---- home
@@ -423,6 +466,7 @@ function renderHome() {
   $('got-n').textContent = got.length;
   $('got-bar').style.width = (got.length / 50 * 100) + '%';
   $('groups').innerHTML = GROUPS.map(g => `<button class="grp" data-g="${g.id}" aria-pressed="${g.id === G.id}"><b>${esc(g.label)}</b><span>${esc(g.when)}</span><span>${collected().filter(c => BY[c].n >= g.a && BY[c].n <= g.b).length} of ${g.b - g.a + 1} solved</span></button>`).join('');
+  for (const b of $('modes').children) b.setAttribute('aria-pressed', String((p.answer || 'pick') === b.dataset.m));
   $('group-note').textContent = left ? `${left} state${left === 1 ? '' : 's'} in this group still to solve.` : 'You solved every state in this group! Play it again or review it.';
   const n = Math.min(ROUND, gs.length);
   $('play').textContent = left === 0 ? `Play ${n} from this group again` : `Solve ${Math.min(n, left)} new state${Math.min(n, left) === 1 ? '' : 's'}`;
@@ -455,15 +499,12 @@ function askRound() {
   $('q-hint').hidden = true; $('q-hint-btn').hidden = false; $('menu-btn').hidden = false;
   $('q-hint').textContent = `Hint: it's in the ${s.region}, and it became a state in ${s.year}.`;
   const gs = groupStates();
-  $('q-choices').innerHTML = choicesFor(s, gs.length >= 4 ? gs : S).map(x => `<button class="choice" data-c="${x.c}">${esc(x.name)}</button>`).join('');
+  answerBox($('q-choices'), s, gs.length >= 4 ? gs : S, onRoundPick);
   show('s-q');
 }
 $('q-hint-btn').addEventListener('click', () => { $('q-hint').hidden = false; $('q-hint-btn').hidden = true; });
-$('q-choices').addEventListener('click', e => {
-  const b = e.target.closest('.choice'); if (!b || b.disabled) return;
-  const s = round.list[round.i], ok = b.dataset.c === s.c;
-  for (const x of $('q-choices').children) { x.disabled = true; if (x.dataset.c === s.c) x.classList.add('right'); }
-  if (!ok) b.classList.add('wrong');
+function onRoundPick(pc) {
+  const s = round.list[round.i], ok = pc === s.c, b = {dataset: {c: pc}};
   round.results.push({c: s.c, ok});
   const p = me(); const g = p.got[s.c] || {seen: 0, right: 0}; g.seen++; if (ok) g.right++; p.got[s.c] = g; save();
   const picked = BY[b.dataset.c];
@@ -476,7 +517,7 @@ $('q-choices').addEventListener('click', e => {
   round.pending = {s, ok, picked};
   fitBig();
   $('q-go').focus({preventScroll: true});
-});
+}
 $('q-go').addEventListener('click', () => { const r = round.pending; if (r) reveal(r.s, r.ok, r.picked); });
 function usMap(s, pick) { const [cx, cy, r] = s.circle; return Object.entries(DATA.us).map(([c, d]) => `<path d="${d}" class="${c === s.c ? 'me' : c === pick ? 'pick' : ''}"/>`).join('') + `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#E0262F" stroke-width="10"/>`; }
 function reveal(s, ok, picked) {
@@ -532,15 +573,12 @@ function askReview() {
     $('rq-body').innerHTML = `<div class="clue pop">${showWord ? `<span class="eyebrow">The original word</span><span class="w">${esc(w)}</span>` : ''}<span class="eyebrow">What it means</span><span style="font-size:22px;font-weight:700">${esc(means)}</span></div>`;
   }
   const got = groupGot().map(c => BY[c]), gs = groupStates();
-  $('rq-choices').innerHTML = choicesFor(s, got.length >= 4 ? got : gs.length >= 4 ? gs : S).map(x => `<button class="choice" data-c="${x.c}">${esc(x.name)}</button>`).join('');
+  answerBox($('rq-choices'), s, got.length >= 4 ? got : gs.length >= 4 ? gs : S, onReviewPick);
   $('rq-after').hidden = true;
   show('s-rq');
 }
-$('rq-choices').addEventListener('click', e => {
-  const b = e.target.closest('.choice'); if (!b || b.disabled) return;
-  const q = rev.qs[rev.i], s = BY[q.c], ok = b.dataset.c === s.c;
-  for (const x of $('rq-choices').children) { x.disabled = true; if (x.dataset.c === s.c) x.classList.add('right'); }
-  if (!ok) b.classList.add('wrong');
+function onReviewPick(pc) {
+  const q = rev.qs[rev.i], s = BY[q.c], ok = pc === s.c;
   rev.results.push({c: s.c, ok});
   const g = me().got[s.c]; g.seen++; if (ok) g.right++; save();
   const v = $('rq-verdict'); v.className = 'verdict ' + (ok ? 'good' : 'bad');
@@ -548,7 +586,7 @@ $('rq-choices').addEventListener('click', e => {
   $('rq-explain').innerHTML = q.kind === 'shape' ? `<b>Where the name comes from:</b> ${esc(s.lead)}` : `<b>Did you know?</b> ${esc(s.fact)}`;
   $('rq-next').textContent = rev.i + 1 < rev.qs.length ? 'Next' : 'See my score';
   $('rq-after').hidden = false; $('rq-next').focus();
-});
+}
 $('rq-next').addEventListener('click', () => { rev.i++; if (rev.i < rev.qs.length) askReview(); else finishReview(); });
 function finishReview() {
   const right = rev.results.filter(r => r.ok).length, n = rev.results.length;
