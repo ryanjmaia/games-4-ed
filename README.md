@@ -1,6 +1,6 @@
 # Games 4 Ed
 
-Free browser learning games for kids: math facts and the 50 states. No ads, no accounts, no tracking.
+Free browser learning games for kids: math facts, the 50 states and chess puzzles. No ads, no accounts, no tracking.
 
 ## How the site is organized
 
@@ -11,6 +11,7 @@ games/number-blasters/index.html
 games/number-rally/index.html
 games/number-knight/index.html
 games/state-detective/index.html
+games/chessmate/index.html
 ```
 
 Each game is one self-contained HTML file. The site is static, so GitHub Pages serves it as-is with no build step.
